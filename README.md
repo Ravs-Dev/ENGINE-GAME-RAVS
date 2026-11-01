@@ -51,7 +51,7 @@ npm run dist:linux  # AppImage dan .deb ke dist/
 npm run dist:win    # Installer Windows .exe ke dist/
 ```
 
-Build Windows disarankan dijalankan pada Windows. Cross-build dari Linux menggunakan toolset Wine resmi yang dikonfigurasi pada `electron-builder.yml`; unduhan toolchain diverifikasi dengan checksum oleh electron-builder. `npm run pack` membuat folder aplikasi tanpa installer. Node.js dan alat build hanya diperlukan pengembang.
+Build Windows dijalankan pada Windows; workflow rilis sudah menggunakan runner Windows khusus. Cross-build installer Windows dari Linux belum berhasil di lingkungan ini karena dependensi Wine. `npm run pack` membuat folder aplikasi tanpa installer. Node.js dan alat build hanya diperlukan pengembang.
 
 Workflow `.github/workflows/desktop-release.yml` membangun installer pada runner Windows dan Linux. Pull request menjalankan build, dan **Actions → Desktop installers → Run workflow** menyediakan artefak build manual. Push tag versi untuk membuat GitHub Release beserta installer dan `SHA256SUMS.txt` secara otomatis:
 

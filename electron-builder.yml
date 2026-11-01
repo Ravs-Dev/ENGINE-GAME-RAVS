@@ -32,5 +32,3 @@ linux:
   maintainer: Ravs-Dev
   synopsis: Editor scene game 3D
   description: Editor game 3D RAVS dengan viewport, transform, dan simulasi.
-toolsets:
-  wine: "1.0.1"
