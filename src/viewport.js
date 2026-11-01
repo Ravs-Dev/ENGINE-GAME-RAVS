@@ -6,12 +6,12 @@ export function createViewport(canvas, onSelect, onTransform, onTransformEnd) {
   renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
   renderer.shadowMap.enabled = true;
   const world = new THREE.Scene();
-  world.background = new THREE.Color('#151c2a');
+  world.background = new THREE.Color('#080808');
   const camera = new THREE.PerspectiveCamera(50, 1, 0.1, 500);
   camera.position.set(12, 10, 14);
   const orbit = new OrbitControls(camera, canvas);
   orbit.target.set(0, 1, 0); orbit.update();
-  world.add(new THREE.HemisphereLight(0xc9e4ff, 0x3b3545, 2));
+  world.add(new THREE.HemisphereLight(0xc9e4ff, 0x222222, 2));
   const sun = new THREE.DirectionalLight(0xffffff, 3);
   sun.position.set(5, 12, 7); sun.castShadow = true;
   Object.assign(sun.shadow.camera, { left: -12, right: 12, top: 12, bottom: -12 });
@@ -25,7 +25,7 @@ export function createViewport(canvas, onSelect, onTransform, onTransformEnd) {
     const m = gizmo.object;
     if (m) onTransform(m.userData.id, m);
   });
-  const outline = new THREE.BoxHelper(undefined, 0xcbb6ff); outline.visible = false; world.add(outline);
+  const outline = new THREE.BoxHelper(undefined, 0x00c8f5); outline.visible = false; world.add(outline);
   const ray = new THREE.Raycaster(), pointer = new THREE.Vector2(); let down;
   canvas.addEventListener('pointerdown', e => { down = { x: e.clientX, y: e.clientY, axis: gizmo.axis }; });
   canvas.addEventListener('pointerup', e => {
@@ -37,7 +37,7 @@ export function createViewport(canvas, onSelect, onTransform, onTransformEnd) {
   });
   const meshes = new Map();
   function sync(scene, selected, playing) {
-    world.background.set(scene.background ?? '#151c2a');
+    world.background.set(scene.background ?? '#080808');
     grid.visible = scene.grid ?? true;
     for (const [id, m] of meshes) if (!scene.objects.some(o => o.id === id)) {
       if (gizmo.object === m) gizmo.detach(); group.remove(m); m.geometry.dispose(); m.material.dispose(); meshes.delete(id);

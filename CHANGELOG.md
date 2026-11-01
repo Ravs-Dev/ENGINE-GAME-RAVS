@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.5.0
+
+- Add Project Files with folder/file creation, text/script editing, imports, and project backups.
+- Add restricted desktop disk access through native folder selection, revision checks, and path/symlink protections.
+- Add black/cyan theme and replace legacy icons with the Ravs logo adapted from the owner's reference.
+- Add Ravs splash screens for startup/Play, editable game title and duration, and previews.
+- Export standalone HTML games with an embedded renderer, scene, logo, and Ravs loading screen.
+- Keep project scripts as editable text; script execution and native game export remain unavailable.
+- Expand tests for real disk writes, conflict handling, project restoration, and branded game exports.
+
 ## 0.4.0
 
 - Add scene undo/redo with up to 100 edit transactions, including atomic gizmo drags.

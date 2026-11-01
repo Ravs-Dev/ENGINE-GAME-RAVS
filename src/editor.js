@@ -1,3 +1,7 @@
+import logo from '../assets/ravs-logo.png';
+import { createProjectPanel } from './project-panel.js';
+import { createGameHTML, validateSplash } from './game-export.js';
+import { download } from './project.js';
 import { createObject, demoScene, parseScene, step } from './scene.js';
 import { History } from './history.js';
 import { createViewport } from './viewport.js';
@@ -20,6 +24,21 @@ function restoreHistory(direction) {
   const state = history[direction]();
   if (state) { scene = state.scene; selected = state.selected; refresh(); status(direction === 'undo' ? 'Perubahan dibatalkan.' : 'Perubahan diulangi.'); }
 }
+let projectPanel;
+let splash = { title: 'Game Saya', duration: 1.5 }, splashTimer = null, splashActive = false;
+try { const saved = localStorage.getItem('ravs.splash.v1'); if (saved) splash = validateSplash(JSON.parse(saved)); } catch { /* Keep defaults if settings are corrupt. */ }
+$('brandLogo').src = $('splashLogo').src = logo;
+function hideSplash() { clearInterval(splashTimer); splashTimer = null; splashActive = false; $('splashOverlay').hidden = true; }
+function showSplash() {
+  hideSplash(); splashActive = true; $('splashOverlay').hidden = false; $('splashTitle').textContent = splash.title;
+  const start = performance.now(); $('splashProgress').value = 0;
+  splashTimer = setInterval(() => { const progress = (performance.now() - start) / (splash.duration * 1000); $('splashProgress').value = Math.min(1,progress); if (progress >= 1) hideSplash(); }, 30);
+}
+function saveSplash() { try { splash = validateSplash({title:$('gameTitle').value,duration:Number($('splashDuration').value)}); localStorage.setItem('ravs.splash.v1',JSON.stringify(splash)); } catch(e) { status(e.message); } }
+$('gameTitle').value = splash.title; $('splashDuration').value = splash.duration;
+$('gameTitle').onchange = $('splashDuration').onchange = saveSplash;
+$('closeSplash').onclick = hideSplash; $('previewSplash').onclick = showSplash;
+$('exportGame').onclick = () => { try { const game = createGameHTML(backup ?? scene,splash,logo,RAVS_PLAYER_SOURCE); download('game-ravs.html',game,'text/html'); status('Game HTML diekspor dengan loading screen Ravs. Script proyek belum dijalankan di game.'); } catch(e) { status(e.message); } };
 let viewport;
 try {
   viewport = createViewport($('canvas'), id => { if (!backup) { selected = id; refresh(); } }, (id, mesh) => {
@@ -80,8 +99,8 @@ function refresh() {
     }
   } else inspector.textContent = 'Pilih objek di viewport atau hierarchy.';
   $('name').value = scene.name; $('gravity').value = scene.gravity; $('sceneName').textContent = scene.name;
-  for (const id of ['box', 'sphere', 'cylinder', 'new', 'background', 'grid', 'snap', 'demo', 'save', 'export', 'import', 'name', 'gravity', 'mode']) $(id).disabled = !!backup;
-  $('background').value = scene.background ?? '#151c2a';
+  for (const id of ['box', 'sphere', 'cylinder', 'new', 'background', 'grid', 'snap', 'exportGame', 'demo', 'save', 'export', 'import', 'name', 'gravity', 'mode']) $(id).disabled = !!backup;
+  $('background').value = scene.background ?? '#080808';
   $('grid').checked = scene.grid ?? true;
   refreshHistory();
   viewport?.sync(scene, selected, !!backup);
@@ -95,7 +114,7 @@ $('grid').onchange = e => { scene.grid = e.target.checked; record(); refresh(); 
 $('snap').onchange = e => viewport?.setSnap(e.target.checked);
 $('new').onclick = () => {
   if (!confirm('Buat scene kosong? Scene saat ini bisa dipulihkan dengan Undo.')) return;
-  scene = { version: 2, name: 'Untitled Scene', gravity: 9.81, background: '#151c2a', grid: true, objects: [] };
+  scene = { version: 2, name: 'Untitled Scene', gravity: 9.81, background: '#080808', grid: true, objects: [] };
   selected = null; record(); refresh();
 };
 $('mode').onchange = e => viewport?.setMode(e.target.value);
@@ -112,14 +131,14 @@ $('import').onchange = async e => {
 };
 $('demo').onclick = () => { if (confirm('Ganti scene aktif dengan demo 3D? Ekspor dahulu untuk backup.')) { scene = demoScene(); selected = scene.objects[1].id; record(); refresh(); } };
 $('play').onclick = () => {
-  if (backup) { scene = backup; backup = null; keys.clear(); $('play').textContent = '▶ Play'; status('Edit mode'); }
-  else { backup = structuredClone(scene); $('play').textContent = '■ Stop'; $('canvas').focus(); status('Play mode · WASD / tombol panah'); }
+  if (backup) { scene = backup; backup = null; keys.clear(); hideSplash(); $('play').textContent = '▶ Play'; status('Edit mode'); }
+  else { backup = structuredClone(scene); $('play').textContent = '■ Stop'; $('canvas').focus(); status('Play mode · WASD / tombol panah'); showSplash(); }
   refresh();
 };
 window.addEventListener('keydown', e => {
   const key = e.key.length === 1 ? e.key.toLowerCase() : e.key;
   const modifier = e.ctrlKey || e.metaKey;
-  if (modifier && key === 's') { e.preventDefault(); if (!backup) { document.activeElement?.blur(); $('save').click(); } return; }
+  if (modifier && key === 's') { e.preventDefault(); if (projectPanel?.hasTextFocus()) { e.preventDefault(); projectPanel.saveActive(); return; } if (!backup) { document.activeElement?.blur(); $('save').click(); } return; }
   if (['INPUT', 'SELECT', 'TEXTAREA'].includes(e.target.tagName) || e.target.isContentEditable) return;
   if (modifier && key === 'z') { e.preventDefault(); restoreHistory(e.shiftKey ? 'redo' : 'undo'); return; }
   if (modifier && key === 'y') { e.preventDefault(); restoreHistory('redo'); return; }
@@ -136,6 +155,7 @@ window.addEventListener('keydown', e => {
   if (backup && ['a', 'd', 'w', 's', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(key)) { keys.add(key); e.preventDefault(); }
 });
 window.ravsDesktop?.onCommand(command => {
+  if (command === 'save' && projectPanel?.hasTextFocus()) { projectPanel.saveActive(); return; }
   if (command === 'save') { if (!backup) { document.activeElement?.blur(); $('save').click(); } return; }
   const element = document.activeElement;
   if (['INPUT', 'TEXTAREA'].includes(element?.tagName) || element?.isContentEditable) {
@@ -144,12 +164,21 @@ window.ravsDesktop?.onCommand(command => {
   restoreHistory(command);
 });
 window.addEventListener('beforeunload', event => {
-  if (JSON.stringify(backup ?? scene) !== savedScene) { event.preventDefault(); event.returnValue = ''; }
+  if (JSON.stringify(backup ?? scene) !== savedScene || projectPanel?.dirty()) { event.preventDefault(); event.returnValue = ''; }
 });
 window.addEventListener('keyup', e => keys.delete(e.key.length === 1 ? e.key.toLowerCase() : e.key));
 window.addEventListener('blur', () => keys.clear());
 function frame(time) {
-  if (backup) step(scene, (time - last) / 1000, keys); last = time;
+  if (backup && !splashActive) step(scene, (time - last) / 1000, keys); last = time;
   viewport?.sync(scene, selected, !!backup); viewport?.render(); requestAnimationFrame(frame);
 }
-refresh(); requestAnimationFrame(frame);
+projectPanel = createProjectPanel({
+  getScene: () => structuredClone(backup ?? scene), getSplash: () => ({...splash}), status,
+  loadScene: (value, config) => {
+    if (backup) throw Error('Stop simulasi sebelum membuka proyek.');
+    const nextScene = parseScene(JSON.stringify(value)), nextSplash = validateSplash(config);
+    scene = nextScene; splash = nextSplash; selected = null; record(); refresh();
+    $('gameTitle').value = splash.title; $('splashDuration').value = splash.duration; localStorage.setItem('ravs.splash.v1',JSON.stringify(splash));
+  }
+});
+refresh(); requestAnimationFrame(frame); showSplash();

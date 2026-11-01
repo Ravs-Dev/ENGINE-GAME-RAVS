@@ -34,7 +34,7 @@ test('clamp large delta', () => {
 test('legacy 3D scenes receive settings and cylinders roundtrip', () => {
   const s = demoScene(); delete s.background; delete s.grid;
   s.objects.push(createObject('cylinder'));
-  const loaded = parseScene(JSON.stringify(s)); assert.equal(loaded.background, '#151c2a'); assert.equal(loaded.grid, true);
+  const loaded = parseScene(JSON.stringify(s)); assert.equal(loaded.background, '#080808'); assert.equal(loaded.grid, true);
   assert.equal(loaded.objects.at(-1).kind, 'cylinder');
   loaded.grid = 'true'; assert.throws(() => parseScene(JSON.stringify(loaded)));
 });

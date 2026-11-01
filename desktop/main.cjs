@@ -1,13 +1,15 @@
-const { app, BrowserWindow, Menu, dialog, session } = require('electron');
+const { app, BrowserWindow, Menu, dialog, session, ipcMain } = require('electron');
 const path = require('node:path');
 
 app.setName('RAVS Engine 3D');
 app.setAppUserModelId('com.ravs.engine');
+const { ProjectStore } = require('./project-store.cjs');
+const projectStore = new ProjectStore();
 let window;
 function createWindow() {
   window = new BrowserWindow({
     width: 1440, height: 960, minWidth: 960, minHeight: 640,
-    title: 'RAVS Engine 3D', backgroundColor: '#11131b', show: false,
+    title: 'Ravs Engine 3D', icon: path.join(__dirname, '..', 'assets', 'ravs-logo.png'), backgroundColor: '#000000', show: false,
     webPreferences: { preload: path.join(__dirname, 'preload.cjs'), nodeIntegration: false, contextIsolation: true, sandbox: true }
   });
   window.once('ready-to-show', () => window.show());
@@ -24,6 +26,19 @@ function createWindow() {
   window.on('closed', () => { window = null; });
 }
 app.whenReady().then(() => {
+  const handler = (name, action) => ipcMain.handle(name, async (event, ...args) => {
+    if (!window || event.sender !== window.webContents || event.senderFrame !== window.webContents.mainFrame) return { ok: false, error: 'Permintaan tidak diizinkan.' };
+    try { return { ok: true, data: await action(...args) }; } catch (error) { return { ok: false, error: error.message }; }
+  });
+  handler('project:select', async () => {
+    const result = await dialog.showOpenDialog(window, { title: 'Pilih atau buat folder proyek Ravs', properties: ['openDirectory', 'createDirectory'] });
+    return result.canceled ? null : projectStore.select(result.filePaths[0]);
+  });
+  handler('project:list', () => projectStore.list());
+  handler('project:read', relative => projectStore.read(relative));
+  handler('project:create', (relative, type, content) => projectStore.create(relative, type, content));
+  handler('project:write', (relative, content, revision) => projectStore.write(relative, content, revision));
+
   session.defaultSession.setPermissionRequestHandler((_contents, _permission, callback) => callback(false));
   session.defaultSession.setPermissionCheckHandler(() => false);
   session.defaultSession.on('will-download', (_event, item) => {

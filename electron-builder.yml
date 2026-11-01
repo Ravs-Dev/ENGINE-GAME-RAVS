@@ -10,8 +10,10 @@ files:
   - index.html
   - style.css
   - build/renderer.js
+  - assets/**
   - package.json
 win:
+  icon: build/icon.png
   target:
     - target: nsis
       arch: [x64]
@@ -22,6 +24,7 @@ nsis:
   createDesktopShortcut: true
   createStartMenuShortcut: true
 linux:
+  icon: build/icon.png
   syncDesktopName: true
   category: Development
   target:

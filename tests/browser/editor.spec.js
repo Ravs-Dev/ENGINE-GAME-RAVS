@@ -1,3 +1,4 @@
+import { readFile } from 'node:fs/promises';
 import { test, expect } from '@playwright/test';
 test('3D renderer, transforms, persistence and Play/Stop', async ({ page }) => {
   const errors = []; page.on('pageerror', e => errors.push(e.message));
@@ -108,4 +109,41 @@ test('one gizmo drag is one undoable snapped transaction', async ({ page }) => {
   await expect(page.locator('#hierarchy button')).toHaveCount(4);
   await page.locator('#redo').click(); await expect(page.locator('#inspector input').nth(1)).toHaveValue(String(x));
   await page.locator('#save').click();
+});
+
+test('project folders, script editing and branded standalone game export', async ({ page }) => {
+  const errors=[];page.on('pageerror',e=>errors.push(e.message));
+  await page.goto('/');
+  await expect(page.locator('#openProject')).toBeDisabled();
+  await page.locator('#entryName').fill('Gameplay');await page.locator('#addFolder').click();
+  await expect(page.locator('#fileFolder')).toContainText('/Gameplay');
+  await page.locator('#entryName').fill('Player.js');await page.locator('#addFile').click();
+  await expect(page.locator('#filePath')).toHaveText('Gameplay/Player.js');
+  const script='// Player script\nconst speed = 7;\n';await page.locator('#code').fill(script);
+  await page.keyboard.press('Control+s');await expect(page.locator('#status')).toContainText('File tersimpan');
+  await page.reload();await page.locator('[data-path="Gameplay/Player.js"]').click();
+  await expect(page.locator('#code')).toHaveValue(script);
+  await expect(page.locator('#brandLogo')).toHaveJSProperty('naturalWidth',1254);
+  const background=await page.locator('body').evaluate(e=>getComputedStyle(e).backgroundColor);
+  expect(['rgba(0, 0, 0, 0)','rgb(0, 0, 0)','rgb(8, 8, 8)']).toContain(background);
+  await page.locator('#gameTitle').fill('Petualangan Ravs');await page.locator('#gameTitle').dispatchEvent('change');
+  await page.locator('#splashDuration').fill('0.5');await page.locator('#splashDuration').dispatchEvent('change');
+  await page.locator('#previewSplash').click();await expect(page.locator('#splashOverlay h1')).toHaveText('Ravs');
+  await expect(page.locator('#splashTitle')).toHaveText('Petualangan Ravs');await expect(page.locator('#splashOverlay')).toBeHidden();
+  const backupEvent=page.waitForEvent('download');await page.locator('#exportProject').click();
+  const backup=await backupEvent;await backup.saveAs('/tmp/ravs-test-backup.json');
+  const gameEvent=page.waitForEvent('download');await page.locator('#exportGame').click();
+  const game=await gameEvent;await game.saveAs('/tmp/ravs-test-game.html');
+  const player=await page.context().newPage();player.on('pageerror',e=>errors.push(e.message));
+  const requests=[];player.on('request',request=>requests.push(request.url()));
+  await player.setContent(await readFile('/tmp/ravs-test-game.html','utf8'), {waitUntil:'load'});await expect(player.locator('#loading h1')).toHaveText('Ravs');
+  await expect(player.locator('#loading')).toBeHidden({timeout:10000});
+  await expect(player.locator('#error')).toBeEmpty();
+  expect(await player.locator('#game').evaluate(c=>{const gl=c.getContext('webgl2');return !!gl&&gl.getError()===gl.NO_ERROR;})).toBe(true);
+  expect(requests.some(url=>url.startsWith('https:')||url.startsWith('http:'))).toBe(false);
+  await page.locator('#importProject').setInputFiles('/tmp/ravs-test-backup.json');
+  await expect(page.locator('#status')).toHaveText('Backup proyek berhasil dibuka sebagai proyek lokal.');
+  await page.locator('[data-path="Gameplay/Player.js"]').click();await expect(page.locator('#code')).toHaveValue(script);
+  await page.screenshot({path:'/tmp/ravs-050-editor.png',fullPage:true});
+  expect(errors).toEqual([]);
 });

@@ -1,6 +1,6 @@
 # RAVS Engine 3D
 
-Editor game **3D desktop untuk Windows dan Linux**, menggunakan Electron, Three.js, dan WebGL 2. Versi 0.4 menambahkan riwayat edit, shortcut, dan pengaturan scene; mode browser tetap tersedia untuk pengembangan. Pengguna aplikasi hasil build tidak perlu memasang Node.js atau menjalankan server.
+Editor game **3D desktop untuk Windows dan Linux**, menggunakan Electron, Three.js, dan WebGL 2. Versi 0.5 menambahkan Project Files, editor script/teks, tema hitam, logo Ravs, serta ekspor game HTML dengan loading screen; mode browser tetap tersedia untuk pengembangan. Pengguna aplikasi hasil build tidak perlu memasang Node.js atau menjalankan server.
 
 ## Unduh dan instal
 
@@ -37,7 +37,27 @@ Buka `http://localhost:3000` pada browser lokal. Gunakan `PORT=4000 npm start` u
 
 Scene demo memuat Ground, Player, dan Sphere. Pilih Player lalu Play untuk mencoba gerakan. Edit scene dinonaktifkan selama Play.
 
-## Baru di versi 0.4
+## Baru di versi 0.5
+
+### File, folder, dan script
+
+Panel **Project Files** berada di bawah viewport. Isi **Nama baru**, lalu pilih **+ Folder** atau **+ File**. Klik folder untuk menentukan tujuan, dan klik file untuk membuka isinya di editor teks. **Simpan File** atau Ctrl+S saat editor teks aktif menyimpan isi file.
+
+- **Buka Folder Disk** pada aplikasi desktop memakai pemilih folder sistem. Pembuatan file/folder dan penyimpanan teks langsung bekerja pada folder yang dipilih. File yang sudah ada tidak ditimpa saat membuat file baru. Perubahan dari editor lain diperiksa sebelum menyimpan.
+- Tanpa folder disk, file disimpan sebagai **Proyek Lokal** pada profil aplikasi/browser. Gunakan **Ekspor Proyek** untuk backup JSON yang memuat file teks, scene aktif, dan pengaturan loading screen. **Impor Proyek** membuka backup sebagai proyek lokal tanpa menulis ke folder disk.
+- **Tambah File** menyalin file teks yang dipilih ke folder aktif. Batas editor 1 MB per file UTF-8; file biner, path traversal, metadata tersembunyi, dan symlink tidak dibuka. Daftar folder dibatasi 2000 entri / kedalaman 8.
+- Script `.js`, `.json`, `.txt`, atau teks lain dapat diedit, tetapi **belum dijalankan sebagai komponen game**. Tidak ada akses Node.js langsung dari script pengguna.
+- Scene tetap tersimpan pada profil aplikasi melalui **Simpan**; pilih **Ekspor Proyek** untuk membawanya bersama file ke perangkat lain. Folder disk perlu dipilih kembali saat membuka aplikasi berikutnya.
+
+### Logo, tema, dan loading screen
+
+Tema editor menjadi hitam dengan aksen cyan. Logo putih-biru diadaptasi dari referensi pemilik proyek dan dipakai pada ikon installer Windows/Linux, jendela aplikasi, header, serta loading screen. Berkas logo berada di `assets/ravs-logo.png`; ikon packaging berada di `build/icon.png`.
+
+Atur **Judul game** dan **Durasi minimum** pada panel Loading Screen, lalu klik **Pratinjau Loading**. Logo dan nama **Ravs** muncul saat aplikasi dibuka dan sebelum Play. **Ekspor Game HTML** menghasilkan satu file `game-ravs.html` yang berisi renderer, scene, logo, dan loading screen; game ini dapat dibuka dengan browser WebGL 2 tanpa CDN. Pergerakan WASD/panah dan simulasi bawaan ikut diekspor, tetapi script proyek belum dijalankan. Ini belum mengekspor game menjadi EXE.
+
+**Memperbarui aplikasi:** tutup versi lama lalu instal versi 0.5.0 dari Releases. Aplikasi belum memiliki auto-update. Mengubah source/logo di GitHub tidak mengganti installer versi lama; gunakan installer baru. Backup scene/proyek sebelum memperbarui.
+
+## Fitur dari versi 0.4
 
 - **Undo/Redo** hingga 100 transaksi untuk tambah/hapus/duplikasi, inspector, drag gizmo, pengaturan, impor, scene baru, dan demo. Satu drag menjadi satu transaksi; simulasi Play tidak masuk history. History tidak disimpan setelah aplikasi ditutup.
 - **Scene Baru** membuat scene kosong; Undo dapat memulihkan scene sebelumnya.
@@ -82,8 +102,8 @@ Build Windows dijalankan pada Windows; workflow rilis sudah menggunakan runner W
 Workflow `.github/workflows/desktop-release.yml` membangun installer pada runner Windows dan Linux. Pull request menjalankan build, dan **Actions → Desktop installers → Run workflow** menyediakan artefak build manual. Push tag versi untuk membuat GitHub Release beserta installer dan `SHA256SUMS.txt` secara otomatis:
 
 ```sh
-git tag v0.4.0
-git push origin v0.4.0
+git tag v0.5.0
+git push origin v0.5.0
 ```
 
 Untuk rilis berikutnya, perbarui versi `package.json` beserta lockfile dan gunakan tag yang sesuai. Rilis belum tersedia sampai kedua build dan job publikasi berhasil. Jangan commit `dist/` atau executable ke source Git.
@@ -108,10 +128,14 @@ Tes desktop membuka Electron langsung melalui file lokal, memeriksa WebGL, isola
 - `src/editor.js`: hierarchy, inspector, kontrol Play, dan penyimpanan proyek.
 - `desktop/main.cjs`: aplikasi Electron, jendela, menu, dan dialog ekspor.
 - `electron-builder.yml`: konfigurasi installer Windows/Linux.
-- `build/icon.svg` dan `build/icon.png`: ikon aplikasi.
+- `assets/ravs-logo.png` dan `build/icon.png`: logo Ravs dan ikon aplikasi.
+- `src/project-panel.js` dan `src/project.js`: file explorer, editor teks, serta proyek lokal.
+- `desktop/project-store.cjs`: akses file terbatas pada folder yang dipilih.
+- `src/player.js` dan `src/game-export.js`: player mandiri dan ekspor game HTML.
+- `scripts/build.cjs`: bundling editor, player, dan logo.
 - `server.js`: server pengembangan browser.
 - `tests/`: tes model dan tes browser.
 
 ## Batasan versi awal
 
-Ini fondasi engine 3D, belum setara Unity. Fisika memakai ukuran box tanpa rotasi untuk landing vertikal terhadap objek statis; Sphere juga memakai collider box. Belum ada tumbukan samping, tumbukan antar-rigidbody, collider yang mengikuti rotasi, impor model/aset, scripting C#, audio, animasi, atau ekspor game sebagai executable terpisah. Installer saat ini berisi aplikasi editor 3D, bukan toolchain untuk membangun game pengguna. Server ditujukan untuk pengembangan, bukan deployment produksi.
+Ini fondasi engine 3D, belum setara Unity. Fisika memakai ukuran box tanpa rotasi untuk landing vertikal terhadap objek statis; Sphere juga memakai collider box. Belum ada tumbukan samping, tumbukan antar-rigidbody, collider yang mengikuti rotasi, impor model/aset, scripting C#, audio, animasi, atau ekspor game sebagai executable terpisah. Installer berisi aplikasi editor 3D. Ekspor HTML tersedia untuk scene dan komponen bawaan; build game native serta eksekusi script pengguna belum tersedia. Server ditujukan untuk pengembangan, bukan deployment produksi.
