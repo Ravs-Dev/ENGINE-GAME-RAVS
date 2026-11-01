@@ -21,6 +21,8 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm test
+      - name: Install Electron runtime
+        run: npm run setup:desktop
       - name: Prepare Electron sandbox (Linux)
         if: runner.os == 'Linux'
         run: |

@@ -1,6 +1,6 @@
 {
   "name": "ravs-engine",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "private": true,
   "type": "module",
   "scripts": {
@@ -16,12 +16,13 @@
     "test:desktop": "node tests/desktop/smoke.mjs",
     "build": "esbuild src/editor.js --bundle --format=esm --minify --outfile=build/renderer.js",
     "prestart": "npm run build",
-    "predesktop": "npm run build",
+    "predesktop": "npm run setup:desktop && npm run build",
     "predist": "npm run build",
     "predist:linux": "npm run build",
     "predist:win": "npm run build",
     "prepack": "npm run build",
-    "pretest:desktop": "npm run build"
+    "pretest:desktop": "npm run setup:desktop && npm run build",
+    "setup:desktop": "node scripts/setup-desktop.cjs"
   },
   "engines": {
     "node": ">=22"

@@ -43,6 +43,8 @@ Scene 3D menggunakan `version: 2`. Setiap objek memiliki `position`, `rotation` 
 
 Penyimpanan memakai key baru `ravs.scene.3d.v2` sehingga data 2D lama tidak tertimpa. Scene JSON versi 1 (2D) ditolak dengan pesan; belum tersedia konverter otomatis.
 
+Electron 45+ memerlukan instalasi runtime eksplisit. `npm run desktop` dan `npm run test:desktop` menjalankan `npm run setup:desktop` secara otomatis; perintah itu aman dijalankan ulang dan mempertahankan verifikasi checksum.
+
 ## Membuat installer
 
 ```sh
@@ -56,8 +58,8 @@ Build Windows dijalankan pada Windows; workflow rilis sudah menggunakan runner W
 Workflow `.github/workflows/desktop-release.yml` membangun installer pada runner Windows dan Linux. Pull request menjalankan build, dan **Actions → Desktop installers → Run workflow** menyediakan artefak build manual. Push tag versi untuk membuat GitHub Release beserta installer dan `SHA256SUMS.txt` secara otomatis:
 
 ```sh
-git tag v0.3.1
-git push origin v0.3.1
+git tag v0.3.2
+git push origin v0.3.2
 ```
 
 Untuk rilis berikutnya, perbarui versi `package.json` beserta lockfile dan gunakan tag yang sesuai. Rilis belum tersedia sampai kedua build dan job publikasi berhasil. Jangan commit `dist/` atau executable ke source Git.
