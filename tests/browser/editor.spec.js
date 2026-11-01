@@ -41,3 +41,71 @@ test('3D renderer, transforms, persistence and Play/Stop', async ({ page }) => {
   await page.screenshot({ path: '/tmp/ravs-3d-editor.png' });
   expect(errors).toEqual([]);
 });
+
+test('editor transactions, keyboard shortcuts, settings and scene recovery', async ({ page }) => {
+  const errors = []; page.on('pageerror', error => errors.push(error.message));
+  page.on('dialog', dialog => dialog.accept());
+  await page.goto('/');
+  await expect(page.locator('#undo')).toBeDisabled();
+  await page.locator('#cylinder').click();
+  await expect(page.locator('#hierarchy button')).toHaveCount(4);
+  await expect(page.locator('#sceneName')).toContainText('belum disimpan');
+  const positionX = page.locator('#inspector input').nth(1);
+  await positionX.fill('4'); await positionX.dispatchEvent('change');
+  await page.locator('#undo').click(); await expect(positionX).toHaveValue('0');
+  await page.locator('#redo').click(); await expect(positionX).toHaveValue('4');
+  await page.locator('#search').fill('cylinder'); await expect(page.locator('#hierarchy button')).toHaveCount(1);
+  await page.locator('#search').fill(''); await expect(page.locator('#hierarchy button')).toHaveCount(4);
+  await page.locator('#canvas').focus(); await page.keyboard.press('Control+d');
+  await expect(page.locator('#hierarchy button')).toHaveCount(5);
+  await page.keyboard.press('Delete'); await expect(page.locator('#hierarchy button')).toHaveCount(4);
+  await page.keyboard.press('Control+z'); await expect(page.locator('#hierarchy button')).toHaveCount(5);
+  await page.keyboard.press('Control+Shift+z'); await expect(page.locator('#hierarchy button')).toHaveCount(4);
+  await page.locator('#background').fill('#223344'); await page.locator('#background').dispatchEvent('change');
+  await page.locator('#grid').uncheck();
+  await page.locator('#save').click();
+  const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('ravs.scene.3d.v2')));
+  expect(saved.background).toBe('#223344'); expect(saved.grid).toBe(false);
+  expect(saved.objects.at(-1).kind).toBe('cylinder');
+  await expect(page.locator('#sceneName')).not.toContainText('belum disimpan');
+  await page.locator('#new').click(); await expect(page.locator('#hierarchy button')).toHaveCount(0);
+  await page.locator('#undo').click(); await expect(page.locator('#hierarchy button')).toHaveCount(4);
+  await expect(page.locator('#grid')).not.toBeChecked();
+  await page.locator('#play').click(); await expect(page.locator('#undo')).toBeDisabled();
+  await page.locator('#play').click();
+  await page.locator('#undo').click(); // Return to settings before grid was disabled.
+  await expect(page.locator('#grid')).toBeChecked();
+  await page.locator('#box').click(); // Branch from history; redo must be cleared.
+  await expect(page.locator('#redo')).toBeDisabled();
+  await page.locator('#canvas').focus(); await page.keyboard.press('e');
+  await expect(page.locator('#mode')).toHaveValue('rotate');
+  await page.keyboard.press('r'); await expect(page.locator('#mode')).toHaveValue('scale');
+  await page.keyboard.press('w'); await expect(page.locator('#mode')).toHaveValue('translate');
+  await page.locator('#snap').check();
+  await page.locator('#save').click(); await page.reload();
+  await expect(page.locator('#hierarchy button')).toHaveCount(5);
+  await expect(page.locator('#background')).toHaveValue('#223344');
+  await page.screenshot({ path: '/tmp/ravs-040-editor.png' });
+  expect(errors).toEqual([]);
+});
+
+test('one gizmo drag is one undoable snapped transaction', async ({ page }) => {
+  await page.goto('/');
+  await page.locator('#box').click(); await page.locator('#snap').check();
+  const point = await page.locator('canvas').evaluate(async canvas => {
+    const THREE = await import('/node_modules/three/build/three.module.js');
+    const camera = new THREE.PerspectiveCamera(50, canvas.clientWidth / canvas.clientHeight, 0.1, 500);
+    camera.position.set(12, 10, 14); camera.lookAt(0, 1, 0); camera.updateMatrixWorld();
+    const p = new THREE.Vector3(2, 1, 0).project(camera), r = canvas.getBoundingClientRect();
+    return { x: r.left + (p.x + 1) * r.width / 2, y: r.top + (1 - p.y) * r.height / 2 };
+  });
+  await page.mouse.move(point.x, point.y); await page.mouse.down();
+  await page.mouse.move(point.x + 65, point.y, { steps: 10 }); await page.mouse.up();
+  const x = Number(await page.locator('#inspector input').nth(1).inputValue());
+  expect(x).not.toBe(0); expect(x / 0.5).toBe(Math.round(x / 0.5));
+  await page.locator('#undo').click();
+  await expect(page.locator('#inspector input').nth(1)).toHaveValue('0');
+  await expect(page.locator('#hierarchy button')).toHaveCount(4);
+  await page.locator('#redo').click(); await expect(page.locator('#inspector input').nth(1)).toHaveValue(String(x));
+  await page.locator('#save').click();
+});

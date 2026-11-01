@@ -6,7 +6,7 @@ npmRebuild: false
 directories:
   output: dist
 files:
-  - desktop/main.cjs
+  - desktop/*.cjs
   - index.html
   - style.css
   - build/renderer.js

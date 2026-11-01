@@ -31,3 +31,10 @@ test('clamp large delta', () => {
   step({ objects: [o], gravity: 0 }, 10, new Set(['d']));
   assert.equal(o.position.x, 4 / 30);
 });
+test('legacy 3D scenes receive settings and cylinders roundtrip', () => {
+  const s = demoScene(); delete s.background; delete s.grid;
+  s.objects.push(createObject('cylinder'));
+  const loaded = parseScene(JSON.stringify(s)); assert.equal(loaded.background, '#151c2a'); assert.equal(loaded.grid, true);
+  assert.equal(loaded.objects.at(-1).kind, 'cylinder');
+  loaded.grid = 'true'; assert.throws(() => parseScene(JSON.stringify(loaded)));
+});

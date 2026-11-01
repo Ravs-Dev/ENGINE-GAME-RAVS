@@ -1,6 +1,6 @@
 # RAVS Engine 3D
 
-Editor game **3D desktop untuk Windows dan Linux**, menggunakan Electron, Three.js, dan WebGL 2. Versi 0.3 menyediakan installer desktop; mode browser tetap tersedia untuk pengembangan. Pengguna aplikasi hasil build tidak perlu memasang Node.js atau menjalankan server.
+Editor game **3D desktop untuk Windows dan Linux**, menggunakan Electron, Three.js, dan WebGL 2. Versi 0.4 menambahkan riwayat edit, shortcut, dan pengaturan scene; mode browser tetap tersedia untuk pengembangan. Pengguna aplikasi hasil build tidak perlu memasang Node.js atau menjalankan server.
 
 ## Unduh dan instal
 
@@ -27,7 +27,7 @@ Buka `http://localhost:3000` pada browser lokal. Gunakan `PORT=4000 npm start` u
 
 ## Fitur dan kontrol
 
-- Cube dan Sphere dengan material berwarna, cahaya hemisphere/directional, dan bayangan.
+- Cube, Sphere, dan Cylinder dengan material berwarna, cahaya hemisphere/directional, dan bayangan.
 - Kamera perspektif: drag untuk orbit, scroll untuk zoom, klik kanan + drag untuk pan.
 - Klik mesh atau hierarchy untuk memilih objek.
 - Gizmo **Move / Rotate / Scale**, inspector Position/Rotation/Scale XYZ, dan tombol Fokus.
@@ -36,6 +36,30 @@ Buka `http://localhost:3000` pada browser lokal. Gunakan `PORT=4000 npm start` u
 - Simpan scene ke browser; ekspor/impor JSON untuk backup dan berbagi.
 
 Scene demo memuat Ground, Player, dan Sphere. Pilih Player lalu Play untuk mencoba gerakan. Edit scene dinonaktifkan selama Play.
+
+## Baru di versi 0.4
+
+- **Undo/Redo** hingga 100 transaksi untuk tambah/hapus/duplikasi, inspector, drag gizmo, pengaturan, impor, scene baru, dan demo. Satu drag menjadi satu transaksi; simulasi Play tidak masuk history. History tidak disimpan setelah aplikasi ditutup.
+- **Scene Baru** membuat scene kosong; Undo dapat memulihkan scene sebelumnya.
+- **Cari objek** berdasarkan nama di hierarchy; pencarian tidak mengubah scene.
+- **Cylinder** sebagai primitive tambahan (collider tetap bounding box).
+- **Snap transform**: perpindahan 0.5 unit, rotasi 15°, dan skala 0.25, berlaku saat memakai gizmo.
+- **Latar dan grid** tersimpan bersama scene. File 3D versi 2 lama tetap bisa dibuka dengan pengaturan default.
+- **Status belum disimpan** dan konfirmasi sebelum menutup/reload jika scene berubah. Simpan lokal tetap perlu ekspor JSON untuk backup antar-komputer.
+- Menu Undo/Redo dan Simpan pada aplikasi desktop terhubung ke editor. Undo saat mengetik tetap berlaku pada teks.
+
+| Shortcut | Fungsi |
+| --- | --- |
+| Ctrl/Cmd+Z | Undo scene (di luar kolom input) |
+| Ctrl/Cmd+Shift+Z | Redo scene |
+| Ctrl+Y | Redo (di luar kolom input) |
+| Ctrl/Cmd+S | Simpan scene lokal |
+| Ctrl/Cmd+D | Duplikat objek terpilih |
+| Delete | Hapus objek terpilih |
+| W / E / R | Move / Rotate / Scale saat Edit |
+| F | Fokus kamera ke objek terpilih |
+
+WASD saat Play tetap untuk menggerakkan Player. Kolom teks/angka mempertahankan shortcut pengetikan normal.
 
 ## Format proyek
 
@@ -58,8 +82,8 @@ Build Windows dijalankan pada Windows; workflow rilis sudah menggunakan runner W
 Workflow `.github/workflows/desktop-release.yml` membangun installer pada runner Windows dan Linux. Pull request menjalankan build, dan **Actions → Desktop installers → Run workflow** menyediakan artefak build manual. Push tag versi untuk membuat GitHub Release beserta installer dan `SHA256SUMS.txt` secara otomatis:
 
 ```sh
-git tag v0.3.2
-git push origin v0.3.2
+git tag v0.4.0
+git push origin v0.4.0
 ```
 
 Untuk rilis berikutnya, perbarui versi `package.json` beserta lockfile dan gunakan tag yang sesuai. Rilis belum tersedia sampai kedua build dan job publikasi berhasil. Jangan commit `dist/` atau executable ke source Git.
@@ -90,4 +114,4 @@ Tes desktop membuka Electron langsung melalui file lokal, memeriksa WebGL, isola
 
 ## Batasan versi awal
 
-Ini fondasi engine 3D, belum setara Unity. Fisika memakai ukuran box tanpa rotasi untuk landing vertikal terhadap objek statis; Sphere juga memakai collider box. Belum ada tumbukan samping, tumbukan antar-rigidbody, collider yang mengikuti rotasi, undo/redo, impor model/aset, scripting C#, audio, animasi, atau ekspor game sebagai executable terpisah. Installer saat ini berisi aplikasi editor 3D, bukan toolchain untuk membangun game pengguna. Server ditujukan untuk pengembangan, bukan deployment produksi.
+Ini fondasi engine 3D, belum setara Unity. Fisika memakai ukuran box tanpa rotasi untuk landing vertikal terhadap objek statis; Sphere juga memakai collider box. Belum ada tumbukan samping, tumbukan antar-rigidbody, collider yang mengikuti rotasi, impor model/aset, scripting C#, audio, animasi, atau ekspor game sebagai executable terpisah. Installer saat ini berisi aplikasi editor 3D, bukan toolchain untuk membangun game pengguna. Server ditujukan untuk pengembangan, bukan deployment produksi.

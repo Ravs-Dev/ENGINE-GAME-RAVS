@@ -26,6 +26,10 @@ try {
   }), true);
   await page.locator('#box').click();
   assert.equal(await page.locator('#hierarchy button').count(), 4);
+  await app.evaluate(({ Menu }) => Menu.getApplicationMenu().items.find(i => i.label === 'Edit').submenu.items.find(i => i.label === 'Undo').click());
+  await page.waitForFunction(() => document.querySelectorAll('#hierarchy button').length === 3);
+  await app.evaluate(({ Menu }) => Menu.getApplicationMenu().items.find(i => i.label === 'Edit').submenu.items.find(i => i.label === 'Redo').click());
+  await page.waitForFunction(() => document.querySelectorAll('#hierarchy button').length === 4);
   await page.locator('#save').click(); await page.reload();
   await page.waitForSelector('#hierarchy button');
   assert.equal(await page.locator('#hierarchy button').count(), 4);

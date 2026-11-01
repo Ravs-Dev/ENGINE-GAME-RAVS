@@ -1,4 +1,5 @@
 import { createObject, demoScene, parseScene, step } from './scene.js';
+import { History } from './history.js';
 import { createViewport } from './viewport.js';
 const $ = id => document.getElementById(id);
 const keys = new Set(), storageKey = 'ravs.scene.3d.v2';
@@ -6,17 +7,31 @@ let scene = demoScene(), selected = scene.objects[1].id, backup = null, last = 0
 const status = text => $('status').textContent = text;
 try { const saved = localStorage.getItem(storageKey); if (saved) scene = parseScene(saved); }
 catch { status('Data 3D lokal tidak valid. Demo dimuat.'); }
+const history = new History({ scene, selected });
+let savedScene = JSON.stringify(scene);
+const record = () => { if (!backup) history.record({ scene, selected }); refreshHistory(); };
+function refreshHistory() {
+  $('undo').disabled = !!backup || !history.canUndo;
+  $('redo').disabled = !!backup || !history.canRedo;
+  $('sceneName').textContent = scene.name + (JSON.stringify(backup ?? scene) !== savedScene ? ' • belum disimpan' : '');
+}
+function restoreHistory(direction) {
+  if (backup) return;
+  const state = history[direction]();
+  if (state) { scene = state.scene; selected = state.selected; refresh(); status(direction === 'undo' ? 'Perubahan dibatalkan.' : 'Perubahan diulangi.'); }
+}
 let viewport;
 try {
   viewport = createViewport($('canvas'), id => { if (!backup) { selected = id; refresh(); } }, (id, mesh) => {
     const o = scene.objects.find(o => o.id === id);
     if (!o || backup) return;
     for (const a of ['x', 'y', 'z']) {
-      o.position[a] = mesh.position[a]; o.rotation[a] = mesh.rotation[a] * 180 / Math.PI;
+      o.position[a] = Math.max(-10000, Math.min(10000, mesh.position[a]));
+      o.rotation[a] = Math.max(-10000, Math.min(10000, mesh.rotation[a] * 180 / Math.PI));
       o.scale[a] = Math.max(0.05, Math.min(1000, mesh.scale[a]));
     }
     refresh();
-  });
+  }, record);
 } catch (error) {
   status('Renderer 3D gagal: browser membutuhkan WebGL 2. ' + error.message);
   $('play').disabled = true;
@@ -33,13 +48,13 @@ function field(parent, label, target, key, type, min, max) {
       if (!Number.isFinite(value)) return;
       value = Math.min(max ?? 10000, Math.max(min ?? -10000, value));
     }
-    target[key] = value; refresh();
+    target[key] = value; record(); refresh();
   };
   row.append(input); parent.append(row);
 }
 function refresh() {
   const hierarchy = $('hierarchy'), inspector = $('inspector'); hierarchy.replaceChildren(); inspector.replaceChildren();
-  for (const o of scene.objects) {
+  for (const o of scene.objects.filter(o => o.name.toLowerCase().includes($('search').value.toLowerCase()))) {
     const b = document.createElement('button'); b.textContent = (o.kind === 'sphere' ? '◉ ' : '◇ ') + o.name;
     b.className = o.id === selected ? 'selected' : ''; b.onclick = () => { selected = o.id; refresh(); }; hierarchy.append(b);
   }
@@ -61,36 +76,75 @@ function refresh() {
       ['Hapus', () => { scene.objects = scene.objects.filter(n => n.id !== o.id); selected = null; }]
     ]) {
       const b = document.createElement('button'); b.textContent = name; b.disabled = !!backup;
-      b.onclick = () => { action(); refresh(); }; inspector.append(b);
+      b.onclick = () => { action(); record(); refresh(); }; inspector.append(b);
     }
   } else inspector.textContent = 'Pilih objek di viewport atau hierarchy.';
   $('name').value = scene.name; $('gravity').value = scene.gravity; $('sceneName').textContent = scene.name;
-  for (const id of ['box', 'sphere', 'demo', 'save', 'export', 'import', 'name', 'gravity', 'mode']) $(id).disabled = !!backup;
+  for (const id of ['box', 'sphere', 'cylinder', 'new', 'background', 'grid', 'snap', 'demo', 'save', 'export', 'import', 'name', 'gravity', 'mode']) $(id).disabled = !!backup;
+  $('background').value = scene.background ?? '#151c2a';
+  $('grid').checked = scene.grid ?? true;
+  refreshHistory();
   viewport?.sync(scene, selected, !!backup);
 }
-for (const kind of ['box', 'sphere']) $(kind).onclick = () => { const o = createObject(kind); scene.objects.push(o); selected = o.id; refresh(); };
+for (const kind of ['box', 'sphere', 'cylinder']) $(kind).onclick = () => { const o = createObject(kind); scene.objects.push(o); selected = o.id; record(); refresh(); };
+$('undo').onclick = () => restoreHistory('undo');
+$('redo').onclick = () => restoreHistory('redo');
+$('search').oninput = refresh;
+$('background').onchange = e => { scene.background = e.target.value; record(); refresh(); };
+$('grid').onchange = e => { scene.grid = e.target.checked; record(); refresh(); };
+$('snap').onchange = e => viewport?.setSnap(e.target.checked);
+$('new').onclick = () => {
+  if (!confirm('Buat scene kosong? Scene saat ini bisa dipulihkan dengan Undo.')) return;
+  scene = { version: 2, name: 'Untitled Scene', gravity: 9.81, background: '#151c2a', grid: true, objects: [] };
+  selected = null; record(); refresh();
+};
 $('mode').onchange = e => viewport?.setMode(e.target.value);
-$('name').onchange = e => { scene.name = e.target.value; refresh(); };
-$('gravity').onchange = e => { const n = Number(e.target.value); if (Number.isFinite(n)) scene.gravity = Math.max(0, Math.min(10000, n)); refresh(); };
-$('save').onclick = () => { try { localStorage.setItem(storageKey, JSON.stringify(scene)); status('Scene 3D tersimpan di browser.'); } catch (e) { status(e.message); } };
+$('name').onchange = e => { scene.name = e.target.value; record(); refresh(); };
+$('gravity').onchange = e => { const n = Number(e.target.value); if (Number.isFinite(n)) scene.gravity = Math.max(0, Math.min(10000, n)); record(); refresh(); };
+$('save').onclick = () => { try { localStorage.setItem(storageKey, JSON.stringify(scene)); savedScene = JSON.stringify(scene); refreshHistory(); status('Scene 3D tersimpan lokal.'); } catch (e) { status(e.message); } };
 $('export').onclick = () => {
   const url = URL.createObjectURL(new Blob([JSON.stringify(scene, null, 2)], { type: 'application/json' }));
   const a = document.createElement('a'); a.href = url; a.download = 'scene.ravs3d.json'; a.click(); setTimeout(() => URL.revokeObjectURL(url), 1000);
 };
 $('import').onchange = async e => {
-  try { const file = e.target.files[0]; if (!file) return; if (file.size > 5e6) throw Error('Batas ukuran 5 MB'); scene = parseScene(await file.text()); selected = null; refresh(); status('Scene 3D berhasil diimpor.'); }
+  try { const file = e.target.files[0]; if (!file) return; if (file.size > 5e6) throw Error('Batas ukuran 5 MB'); scene = parseScene(await file.text()); selected = null; record(); refresh(); status('Scene 3D berhasil diimpor.'); }
   catch (error) { status('Impor gagal: ' + error.message); } e.target.value = '';
 };
-$('demo').onclick = () => { if (confirm('Ganti scene aktif dengan demo 3D? Ekspor dahulu untuk backup.')) { scene = demoScene(); selected = scene.objects[1].id; refresh(); } };
+$('demo').onclick = () => { if (confirm('Ganti scene aktif dengan demo 3D? Ekspor dahulu untuk backup.')) { scene = demoScene(); selected = scene.objects[1].id; record(); refresh(); } };
 $('play').onclick = () => {
   if (backup) { scene = backup; backup = null; keys.clear(); $('play').textContent = '▶ Play'; status('Edit mode'); }
   else { backup = structuredClone(scene); $('play').textContent = '■ Stop'; $('canvas').focus(); status('Play mode · WASD / tombol panah'); }
   refresh();
 };
 window.addEventListener('keydown', e => {
-  if (['INPUT', 'SELECT', 'TEXTAREA'].includes(e.target.tagName)) return;
   const key = e.key.length === 1 ? e.key.toLowerCase() : e.key;
+  const modifier = e.ctrlKey || e.metaKey;
+  if (modifier && key === 's') { e.preventDefault(); if (!backup) { document.activeElement?.blur(); $('save').click(); } return; }
+  if (['INPUT', 'SELECT', 'TEXTAREA'].includes(e.target.tagName) || e.target.isContentEditable) return;
+  if (modifier && key === 'z') { e.preventDefault(); restoreHistory(e.shiftKey ? 'redo' : 'undo'); return; }
+  if (modifier && key === 'y') { e.preventDefault(); restoreHistory('redo'); return; }
+  if (!backup && modifier && key === 'd') {
+    e.preventDefault(); [...$('inspector').querySelectorAll('button')].find(b => b.textContent === 'Duplikat')?.click(); return;
+  }
+  if (!backup && key === 'Delete') {
+    e.preventDefault(); [...$('inspector').querySelectorAll('button')].find(b => b.textContent === 'Hapus')?.click(); return;
+  }
+  if (!backup && key === 'f') { viewport?.focus(selected); return; }
+  if (!backup && ['w', 'e', 'r'].includes(key)) {
+    $('mode').value = { w: 'translate', e: 'rotate', r: 'scale' }[key]; viewport?.setMode($('mode').value); return;
+  }
   if (backup && ['a', 'd', 'w', 's', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(key)) { keys.add(key); e.preventDefault(); }
+});
+window.ravsDesktop?.onCommand(command => {
+  if (command === 'save') { if (!backup) { document.activeElement?.blur(); $('save').click(); } return; }
+  const element = document.activeElement;
+  if (['INPUT', 'TEXTAREA'].includes(element?.tagName) || element?.isContentEditable) {
+    document.execCommand(command); return;
+  }
+  restoreHistory(command);
+});
+window.addEventListener('beforeunload', event => {
+  if (JSON.stringify(backup ?? scene) !== savedScene) { event.preventDefault(); event.returnValue = ''; }
 });
 window.addEventListener('keyup', e => keys.delete(e.key.length === 1 ? e.key.toLowerCase() : e.key));
 window.addEventListener('blur', () => keys.clear());
