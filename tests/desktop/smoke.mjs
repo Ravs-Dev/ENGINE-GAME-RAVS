@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+async function main() {
 const profile = await mkdtemp(join(tmpdir(), 'ravs-desktop-test-'));
 const headless = process.platform === 'linux' && !process.env.DISPLAY;
 const app = await electron.launch({
@@ -33,3 +34,10 @@ try {
   assert.deepEqual(errors, []);
   console.log('PASS: Electron file startup, isolated renderer, WebGL 3D, scene editing, persistence, Play/Stop');
 } finally { await app.close(); await rm(profile, { recursive: true, force: true }); }
+
+}
+main().catch(error => {
+  const message = String(error.stack || error).replaceAll("%", "%25").replaceAll("\r", "%0D").replaceAll("\n", "%0A");
+  console.error(`::error title=Desktop smoke failure::${message}`);
+  process.exitCode = 1;
+});
