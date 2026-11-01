@@ -1,16 +1,101 @@
-import {createObject,demoScene,parseScene,step} from './scene.js';
-const $=id=>document.getElementById(id),c=$('canvas'),ctx=c.getContext('2d'),keys=new Set();let scene=demoScene(),selected=null,backup=null,drag=null,last=0;
-const status=t=>$('status').textContent=t,object=()=>scene.objects.find(o=>o.id===selected);
-try{const s=localStorage.getItem('ravs.scene');if(s)scene=parseScene(s);}catch{status('Data lokal tidak valid; demo dimuat.');}
-function refresh(){const h=$('hierarchy'),i=$('inspector');h.replaceChildren();i.replaceChildren();for(const o of scene.objects){const b=document.createElement('button');b.textContent=o.name;b.className=o.id===selected?'selected':'';b.onclick=()=>{selected=o.id;refresh();};h.append(b);}const o=object();if(o){function field(label,target,key,type){const row=document.createElement('label'),input=document.createElement('input');row.textContent=label;input.type=type;if(type==='checkbox')input.checked=target[key];else input.value=target[key];input.disabled=!!backup;input.onchange=()=>{let v=type==='checkbox'?input.checked:type==='number'?Number(input.value):input.value;if(type==='number'&&(!Number.isFinite(v)||Math.abs(v)>1e6))return;if(['width','height'].includes(key))v=Math.max(1,v);if(key==='bounce')v=Math.max(0,Math.min(1,v));target[key]=v;if(key==='name')refresh();};row.append(input);i.append(row);}field('Nama',o,'name','text');for(const k of ['x','y','width','height','rotation'])field(k,o,k,'number');field('Warna',o,'color','color');field('Rigidbody',o.body,'enabled','checkbox');field('Bounce',o.body,'bounce','number');field('Controller',o.motion,'enabled','checkbox');field('Kecepatan',o.motion,'speed','number');for(const [name,fn]of [['Duplikat',()=>{const n=structuredClone(o);n.id=crypto.randomUUID();n.name+=' Copy';n.x+=20;scene.objects.push(n);selected=n.id;}],['Hapus',()=>{scene.objects=scene.objects.filter(n=>n.id!==o.id);selected=null;}]]){const b=document.createElement('button');b.textContent=name;b.disabled=!!backup;b.onclick=()=>{fn();refresh();};i.append(b);}}else i.textContent='Pilih objek untuk mengedit.';$('name').value=scene.name;$('gravity').value=scene.gravity;$('sceneName').textContent=scene.name;for(const id of ['box','circle','demo','save','export','import','name','gravity'])$(id).disabled=!!backup;}
-for(const k of ['box','circle'])$(k).onclick=()=>{const o=createObject(k);scene.objects.push(o);selected=o.id;refresh();};
-$('name').onchange=e=>{scene.name=e.target.value;refresh();};$('gravity').onchange=e=>{const n=Number(e.target.value);if(Number.isFinite(n)&&Math.abs(n)<=1e6)scene.gravity=n;};
-$('save').onclick=()=>{try{localStorage.setItem('ravs.scene',JSON.stringify(scene));status('Scene tersimpan.');}catch(e){status(e.message);}};
-$('export').onclick=()=>{const u=URL.createObjectURL(new Blob([JSON.stringify(scene,null,2)],{type:'application/json'})),a=document.createElement('a');a.href=u;a.download='scene.ravs.json';a.click();setTimeout(()=>URL.revokeObjectURL(u),1000);};
-$('import').onchange=async e=>{try{const f=e.target.files[0];if(!f)return;if(f.size>5e6)throw Error('Batas ukuran 5 MB');scene=parseScene(await f.text());selected=null;refresh();status('Impor berhasil.');}catch(err){status('Impor gagal: '+err.message);}e.target.value='';};
-$('demo').onclick=()=>{if(confirm('Ganti scene aktif? Ekspor terlebih dahulu untuk backup.')){scene=demoScene();selected=null;refresh();}};
-$('play').onclick=()=>{if(backup){scene=backup;backup=null;keys.clear();$('play').textContent='▶ Play';}else{backup=structuredClone(scene);$('play').textContent='■ Stop';c.focus();}refresh();};
-function point(e){const r=c.getBoundingClientRect();return{x:(e.clientX-r.left)*800/r.width,y:(e.clientY-r.top)*480/r.height};}
-c.onpointerdown=e=>{if(backup)return;const p=point(e),o=[...scene.objects].reverse().find(o=>{const a=-o.rotation*Math.PI/180,dx=p.x-o.x,dy=p.y-o.y,x=dx*Math.cos(a)-dy*Math.sin(a),y=dx*Math.sin(a)+dy*Math.cos(a);return o.kind==='circle'?(x/(o.width/2))**2+(y/(o.height/2))**2<=1:Math.abs(x)<=o.width/2&&Math.abs(y)<=o.height/2;});selected=o?.id;drag=o?{x:p.x-o.x,y:p.y-o.y}:null;c.setPointerCapture(e.pointerId);refresh();};c.onpointermove=e=>{const o=object();if(!drag||backup||!o)return;const p=point(e);o.x=Math.round(p.x-drag.x);o.y=Math.round(p.y-drag.y);};c.onpointerup=c.onpointercancel=()=>{drag=null;refresh();};
-window.addEventListener('keydown',e=>{if(e.target.tagName==='INPUT')return;if(backup&&['a','d','ArrowLeft','ArrowRight'].includes(e.key)){keys.add(e.key);e.preventDefault();}});window.addEventListener('keyup',e=>keys.delete(e.key));window.addEventListener('blur',()=>keys.clear());
-function draw(t){if(backup)step(scene,(t-last)/1000,keys);last=t;ctx.clearRect(0,0,800,480);ctx.strokeStyle='#252d40';ctx.beginPath();for(let x=0;x<800;x+=32){ctx.moveTo(x,0);ctx.lineTo(x,480);}for(let y=0;y<480;y+=32){ctx.moveTo(0,y);ctx.lineTo(800,y);}ctx.stroke();for(const o of scene.objects){ctx.save();ctx.translate(o.x,o.y);ctx.rotate(o.rotation*Math.PI/180);ctx.fillStyle=o.color;ctx.beginPath();if(o.kind==='circle')ctx.ellipse(0,0,o.width/2,o.height/2,0,0,Math.PI*2);else ctx.rect(-o.width/2,-o.height/2,o.width,o.height);ctx.fill();if(o.id===selected){ctx.strokeStyle='#fff';ctx.strokeRect(-o.width/2-4,-o.height/2-4,o.width+8,o.height+8);}ctx.restore();}requestAnimationFrame(draw);}refresh();requestAnimationFrame(draw);
+import { createObject, demoScene, parseScene, step } from './scene.js';
+import { createViewport } from './viewport.js';
+const $ = id => document.getElementById(id);
+const keys = new Set(), storageKey = 'ravs.scene.3d.v2';
+let scene = demoScene(), selected = scene.objects[1].id, backup = null, last = 0;
+const status = text => $('status').textContent = text;
+try { const saved = localStorage.getItem(storageKey); if (saved) scene = parseScene(saved); }
+catch { status('Data 3D lokal tidak valid. Demo dimuat.'); }
+let viewport;
+try {
+  viewport = createViewport($('canvas'), id => { if (!backup) { selected = id; refresh(); } }, (id, mesh) => {
+    const o = scene.objects.find(o => o.id === id);
+    if (!o || backup) return;
+    for (const a of ['x', 'y', 'z']) {
+      o.position[a] = mesh.position[a]; o.rotation[a] = mesh.rotation[a] * 180 / Math.PI;
+      o.scale[a] = Math.max(0.05, Math.min(1000, mesh.scale[a]));
+    }
+    refresh();
+  });
+} catch (error) {
+  status('Renderer 3D gagal: browser membutuhkan WebGL 2. ' + error.message);
+  $('play').disabled = true;
+}
+function field(parent, label, target, key, type, min, max) {
+  const row = document.createElement('label'), input = document.createElement('input');
+  row.textContent = label; input.type = type;
+  if (type === 'checkbox') input.checked = target[key]; else input.value = typeof target[key] === 'number' ? Math.round(target[key] * 1000) / 1000 : target[key];
+  if (type === 'number') { input.step = '0.1'; if (min !== undefined) input.min = min; if (max !== undefined) input.max = max; }
+  input.disabled = !!backup;
+  input.onchange = () => {
+    let value = type === 'checkbox' ? input.checked : type === 'number' ? Number(input.value) : input.value;
+    if (type === 'number') {
+      if (!Number.isFinite(value)) return;
+      value = Math.min(max ?? 10000, Math.max(min ?? -10000, value));
+    }
+    target[key] = value; refresh();
+  };
+  row.append(input); parent.append(row);
+}
+function refresh() {
+  const hierarchy = $('hierarchy'), inspector = $('inspector'); hierarchy.replaceChildren(); inspector.replaceChildren();
+  for (const o of scene.objects) {
+    const b = document.createElement('button'); b.textContent = (o.kind === 'sphere' ? '◉ ' : '◇ ') + o.name;
+    b.className = o.id === selected ? 'selected' : ''; b.onclick = () => { selected = o.id; refresh(); }; hierarchy.append(b);
+  }
+  const o = scene.objects.find(o => o.id === selected);
+  if (o) {
+    field(inspector, 'Nama', o, 'name', 'text');
+    for (const [key, label] of [['position', 'Position'], ['rotation', 'Rotation °'], ['scale', 'Scale']]) {
+      const title = document.createElement('h2'); title.textContent = label; inspector.append(title);
+      for (const a of ['x', 'y', 'z']) field(inspector, a.toUpperCase(), o[key], a, 'number', key === 'scale' ? 0.05 : -10000, key === 'scale' ? 1000 : 10000);
+    }
+    field(inspector, 'Warna', o, 'color', 'color');
+    field(inspector, 'Rigidbody', o.body, 'enabled', 'checkbox');
+    field(inspector, 'Bounce', o.body, 'bounce', 'number', 0, 1);
+    field(inspector, 'Controller', o.motion, 'enabled', 'checkbox');
+    field(inspector, 'Kecepatan', o.motion, 'speed', 'number', 0, 100);
+    for (const [name, action] of [
+      ['Fokus', () => viewport?.focus(o.id)],
+      ['Duplikat', () => { const n = structuredClone(o); n.id = crypto.randomUUID(); n.name += ' Copy'; n.position.x += 1.5; scene.objects.push(n); selected = n.id; }],
+      ['Hapus', () => { scene.objects = scene.objects.filter(n => n.id !== o.id); selected = null; }]
+    ]) {
+      const b = document.createElement('button'); b.textContent = name; b.disabled = !!backup;
+      b.onclick = () => { action(); refresh(); }; inspector.append(b);
+    }
+  } else inspector.textContent = 'Pilih objek di viewport atau hierarchy.';
+  $('name').value = scene.name; $('gravity').value = scene.gravity; $('sceneName').textContent = scene.name;
+  for (const id of ['box', 'sphere', 'demo', 'save', 'export', 'import', 'name', 'gravity', 'mode']) $(id).disabled = !!backup;
+  viewport?.sync(scene, selected, !!backup);
+}
+for (const kind of ['box', 'sphere']) $(kind).onclick = () => { const o = createObject(kind); scene.objects.push(o); selected = o.id; refresh(); };
+$('mode').onchange = e => viewport?.setMode(e.target.value);
+$('name').onchange = e => { scene.name = e.target.value; refresh(); };
+$('gravity').onchange = e => { const n = Number(e.target.value); if (Number.isFinite(n)) scene.gravity = Math.max(0, Math.min(10000, n)); refresh(); };
+$('save').onclick = () => { try { localStorage.setItem(storageKey, JSON.stringify(scene)); status('Scene 3D tersimpan di browser.'); } catch (e) { status(e.message); } };
+$('export').onclick = () => {
+  const url = URL.createObjectURL(new Blob([JSON.stringify(scene, null, 2)], { type: 'application/json' }));
+  const a = document.createElement('a'); a.href = url; a.download = 'scene.ravs3d.json'; a.click(); setTimeout(() => URL.revokeObjectURL(url), 1000);
+};
+$('import').onchange = async e => {
+  try { const file = e.target.files[0]; if (!file) return; if (file.size > 5e6) throw Error('Batas ukuran 5 MB'); scene = parseScene(await file.text()); selected = null; refresh(); status('Scene 3D berhasil diimpor.'); }
+  catch (error) { status('Impor gagal: ' + error.message); } e.target.value = '';
+};
+$('demo').onclick = () => { if (confirm('Ganti scene aktif dengan demo 3D? Ekspor dahulu untuk backup.')) { scene = demoScene(); selected = scene.objects[1].id; refresh(); } };
+$('play').onclick = () => {
+  if (backup) { scene = backup; backup = null; keys.clear(); $('play').textContent = '▶ Play'; status('Edit mode'); }
+  else { backup = structuredClone(scene); $('play').textContent = '■ Stop'; $('canvas').focus(); status('Play mode · WASD / tombol panah'); }
+  refresh();
+};
+window.addEventListener('keydown', e => {
+  if (['INPUT', 'SELECT', 'TEXTAREA'].includes(e.target.tagName)) return;
+  const key = e.key.length === 1 ? e.key.toLowerCase() : e.key;
+  if (backup && ['a', 'd', 'w', 's', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(key)) { keys.add(key); e.preventDefault(); }
+});
+window.addEventListener('keyup', e => keys.delete(e.key.length === 1 ? e.key.toLowerCase() : e.key));
+window.addEventListener('blur', () => keys.clear());
+function frame(time) {
+  if (backup) step(scene, (time - last) / 1000, keys); last = time;
+  viewport?.sync(scene, selected, !!backup); viewport?.render(); requestAnimationFrame(frame);
+}
+refresh(); requestAnimationFrame(frame);

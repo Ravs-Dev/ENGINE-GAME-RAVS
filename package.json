@@ -1,1 +1,21 @@
-{"name":"ravs-engine","version":"0.1.0","private":true,"type":"module","scripts":{"dev":"node server.js","start":"node server.js","test":"node --test"},"engines":{"node":">=20"}}
+{
+  "name": "ravs-engine",
+  "version": "0.2.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node server.js",
+    "start": "node server.js",
+    "test": "node --test tests/scene.test.js",
+    "test:browser": "playwright test"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "dependencies": {
+    "three": "0.180.0"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.56.1"
+  }
+}

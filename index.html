@@ -1,1 +1,47 @@
-<!doctype html><html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>RAVS Engine</title><link rel="stylesheet" href="/style.css"></head><body><header><strong>◈ RAVS <small>ENGINE / 2D</small></strong><span id="sceneName"></span><button id="play">▶ Play</button><button id="save">Simpan</button><button id="export">Ekspor JSON</button><label class="button">Impor<input id="import" type="file" accept=".json,application/json" hidden></label></header><main><aside><h2>Hierarchy</h2><div class="tools"><button id="box">+ Box</button><button id="circle">+ Circle</button></div><div id="hierarchy"></div><h2>Project</h2><p>Scene lokal disimpan di browser. Ekspor JSON untuk menyimpan file proyek ke disk.</p><button id="demo">Muat demo</button></aside><section class="viewport"><div class="viewbar">Scene <span>800 × 480 · drag untuk memindahkan objek</span></div><canvas id="canvas" width="800" height="480" tabindex="0" aria-label="Scene editor"></canvas><footer id="status" role="status">Siap</footer><div class="help">PLAY: A / D atau ← / → untuk menggerakkan Player. Stop mengembalikan scene awal.</div></section><aside><h2>Inspector</h2><div id="inspector"></div><h2>Scene Settings</h2><label>Nama<input id="name"></label><label>Gravitasi<input id="gravity" type="number"></label><p>Rigidbody: gravitasi dan tumbukan vertikal terhadap objek statis. Controller: gerakan horizontal saat Play.</p></aside></main><script type="module" src="/src/editor.js"></script></body></html>
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>RAVS Engine 3D</title>
+  <link rel="stylesheet" href="/style.css">
+  <script type="importmap">
+    {"imports":{"three":"/node_modules/three/build/three.module.js","three/addons/":"/node_modules/three/examples/jsm/"}}
+  </script>
+</head>
+<body>
+  <header>
+    <strong>◈ RAVS <small>ENGINE / 3D</small></strong>
+    <span id="sceneName"></span>
+    <button id="play">▶ Play</button>
+    <button id="save">Simpan</button>
+    <button id="export">Ekspor JSON</button>
+    <label class="button">Impor<input id="import" type="file" accept=".json,application/json" hidden></label>
+  </header>
+  <main>
+    <aside>
+      <h2>Hierarchy</h2>
+      <div class="tools"><button id="box">+ Cube</button><button id="sphere">+ Sphere</button></div>
+      <div id="hierarchy"></div>
+      <h2>Project</h2>
+      <p>Scene lokal disimpan di browser. Ekspor JSON untuk menyimpan file proyek ke disk.</p>
+      <button id="demo">Muat demo</button>
+    </aside>
+    <section class="viewport">
+      <div class="viewbar">Scene <span>Perspektif · WebGL 2</span></div>
+      <label>Transform<select id="mode"><option value="translate">Move</option><option value="rotate">Rotate</option><option value="scale">Scale</option></select></label>
+      <canvas id="canvas" tabindex="0" aria-label="Scene editor 3D"></canvas>
+      <footer id="status" role="status">Siap · scene 3D</footer>
+      <div class="help">Orbit: drag · Zoom: scroll · Pan: klik kanan + drag. Pilih objek lalu gunakan gizmo. PLAY: WASD / panah. Stop memulihkan scene.</div>
+    </section>
+    <aside>
+      <h2>Inspector</h2><div id="inspector"></div>
+      <h2>Scene Settings</h2>
+      <label>Nama<input id="name"></label>
+      <label>Gravitasi<input id="gravity" type="number" min="0" max="10000" step="0.1"></label>
+      <p>Rigidbody: gravitasi dan tumbukan vertikal terhadap objek statis. Controller: gerakan pada sumbu X/Z saat Play.</p>
+    </aside>
+  </main>
+  <script type="module" src="/src/editor.js"></script>
+</body>
+</html>

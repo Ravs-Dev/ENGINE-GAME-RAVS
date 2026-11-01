@@ -1,7 +1,33 @@
-import {test} from 'node:test';
+import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import {demoScene,parseScene,step} from '../src/scene.js';
-test('scene roundtrip',()=>{const s=demoScene();assert.deepEqual(parseScene(JSON.stringify(s)),s);});
-test('reject duplicate IDs and unsupported versions',()=>{const s=demoScene();s.objects.push(s.objects[0]);assert.throws(()=>parseScene(JSON.stringify(s)));assert.throws(()=>parseScene('{"version":2}'));});
-test('body lands on platform',()=>{const s=demoScene(),p=s.objects[1];p.body.bounce=0;for(let i=0;i<300;i++)step(s,1/60);assert.equal(p.y,376);assert.equal(p.body.vy,0);});
-test('controller moves player',()=>{const s=demoScene();step(s,1/60,new Set(['d']));assert.equal(s.objects[1].x,223);assert.equal(s.objects[0].x,400);});
+import { createObject, demoScene, parseScene, step } from '../src/scene.js';
+test('3D scene roundtrip preserves XYZ transforms and components', () => {
+  const s = demoScene(); assert.deepEqual(parseScene(JSON.stringify(s)), s);
+});
+test('reject legacy 2D, duplicate IDs, malformed and negative scales', () => {
+  for (const raw of ['null', '{"version":1}']) assert.throws(() => parseScene(raw));
+  const s = demoScene(); s.objects.push(s.objects[0]); assert.throws(() => parseScene(JSON.stringify(s)));
+  s.objects.pop(); s.objects[0].scale.z = -1; assert.throws(() => parseScene(JSON.stringify(s)));
+});
+test('body lands on ground along Y', () => {
+  const s = demoScene(), p = s.objects[1]; p.body.bounce = 0;
+  for (let i = 0; i < 300; i++) step(s, 1 / 60);
+  assert.equal(p.position.y, 0.5); assert.equal(p.body.vy, 0);
+});
+test('WASD moves X/Z with normalized diagonal speed', () => {
+  const s = demoScene(), p = s.objects[1], start = structuredClone(p.position);
+  step(s, 1 / 60, new Set(['d', 'w']));
+  assert.ok(p.position.x > start.x && p.position.z < start.z);
+  assert.ok(Math.abs(Math.hypot(p.position.x - start.x, p.position.z - start.z) - 4 / 60) < 1e-10);
+  assert.equal(s.objects[0].position.x, 0);
+});
+test('objects outside platform Z bounds keep falling', () => {
+  const s = demoScene(), p = s.objects[1]; p.position.z = 20;
+  for (let i = 0; i < 60; i++) step(s, 1 / 60);
+  assert.ok(p.position.y < 0);
+});
+test('clamp large delta', () => {
+  const o = createObject(); o.motion.enabled = true;
+  step({ objects: [o], gravity: 0 }, 10, new Set(['d']));
+  assert.equal(o.position.x, 4 / 30);
+});

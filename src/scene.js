@@ -1,7 +1,58 @@
-export function createObject(kind='box', id=crypto.randomUUID()) {
- return {id,name:kind==='circle'?'Circle':'Box',kind,x:320,y:180,width:64,height:64,rotation:0,color:'#7c6cff',body:{enabled:false,vx:0,vy:0,bounce:0.6},motion:{enabled:false,speed:150}};
+const finite = n => typeof n === 'number' && Number.isFinite(n) && Math.abs(n) <= 10000;
+export function createObject(kind = 'box', id = crypto.randomUUID()) {
+  return { id, name: kind === 'sphere' ? 'Sphere' : 'Cube', kind,
+    position: { x: 0, y: 1, z: 0 }, rotation: { x: 0, y: 0, z: 0 },
+    scale: { x: 1, y: 1, z: 1 }, color: '#8c79ff',
+    body: { enabled: false, vy: 0, bounce: 0.3 }, motion: { enabled: false, speed: 4 } };
 }
-export function demoScene(){const floor=createObject('box');Object.assign(floor,{name:'Ground',x:400,y:420,width:650,height:24,color:'#35c9a1'});const player=createObject('box');Object.assign(player,{name:'Player',x:220,y:150,color:'#ffba69',body:{enabled:true,vx:0,vy:0,bounce:0.6},motion:{enabled:true,speed:180}});return {version:1,name:'Demo Scene',gravity:650,objects:[floor,player]};}
-const finite=(n)=>typeof n==='number'&&Number.isFinite(n)&&Math.abs(n)<=1e6;
-export function parseScene(text){const s=JSON.parse(text);if(s.version!==1||typeof s.name!=='string'||!finite(s.gravity)||!Array.isArray(s.objects)||s.objects.length>2000)throw Error('Invalid scene format');const ids=new Set();for(const o of s.objects){if(typeof o.id!=='string'||ids.has(o.id)||typeof o.name!=='string'||!['box','circle'].includes(o.kind)||!['x','y','width','height','rotation'].every(k=>finite(o[k]))||o.width<=0||o.height<=0||!/^#[0-9a-f]{6}$/i.test(o.color)||typeof o.body?.enabled!=='boolean'||!['vx','vy','bounce'].every(k=>finite(o.body[k]))||o.body.bounce<0||o.body.bounce>1||typeof o.motion?.enabled!=='boolean'||!finite(o.motion.speed))throw Error('Invalid object');ids.add(o.id);}return s;}
-export function step(scene,dt,keys=new Set()){dt=Math.min(Math.max(dt,0),1/30);for(const o of scene.objects){if(o.motion.enabled)o.x+=((keys.has('ArrowRight')||keys.has('d')?1:0)-(keys.has('ArrowLeft')||keys.has('a')?1:0))*o.motion.speed*dt;if(!o.body.enabled)continue;const bottom=o.y+o.height/2;o.body.vy+=scene.gravity*dt;o.x+=o.body.vx*dt;o.y+=o.body.vy*dt;for(const floor of scene.objects){if(floor===o||floor.body.enabled)continue;const top=floor.y-floor.height/2;if(o.body.vy>=0&&bottom<=top+1&&o.y+o.height/2>=top&&Math.abs(o.x-floor.x)<(o.width+floor.width)/2){o.y=top-o.height/2;o.body.vy=-o.body.vy*o.body.bounce;if(Math.abs(o.body.vy)<12)o.body.vy=0;}}if(o.y>2000){o.y=-100;o.body.vy=0;}}}
+export function demoScene() {
+  const floor = createObject();
+  Object.assign(floor, { name: 'Ground', position: { x: 0, y: -0.25, z: 0 }, scale: { x: 16, y: 0.5, z: 16 }, color: '#33475e' });
+  const player = createObject();
+  Object.assign(player, { name: 'Player', position: { x: -2, y: 3, z: 0 }, color: '#ffbc70', body: { enabled: true, vy: 0, bounce: 0.3 }, motion: { enabled: true, speed: 4 } });
+  const ball = createObject('sphere');
+  Object.assign(ball, { position: { x: 2, y: 1, z: -1 }, color: '#51d6b0', scale: { x: 2, y: 2, z: 2 } });
+  return { version: 2, name: 'Demo 3D', gravity: 9.81, objects: [floor, player, ball] };
+}
+export function parseScene(text) {
+  const s = JSON.parse(text);
+  if (!s || s.version !== 2 || typeof s.name !== 'string' || !finite(s.gravity) || s.gravity < 0 || !Array.isArray(s.objects) || s.objects.length > 2000) throw Error('Scene harus berformat RAVS 3D versi 2. Scene 2D tidak didukung.');
+  const ids = new Set();
+  for (const o of s.objects) {
+    if (!o || typeof o.id !== 'string' || ids.has(o.id) || typeof o.name !== 'string' || !['box', 'sphere'].includes(o.kind) ||
+      !['position', 'rotation', 'scale'].every(k => o[k] && ['x', 'y', 'z'].every(a => finite(o[k][a]))) ||
+      !['x', 'y', 'z'].every(a => o.scale[a] > 0) || !/^#[0-9a-f]{6}$/i.test(o.color) ||
+      typeof o.body?.enabled !== 'boolean' || !finite(o.body.vy) || !finite(o.body.bounce) || o.body.bounce < 0 || o.body.bounce > 1 ||
+      typeof o.motion?.enabled !== 'boolean' || !finite(o.motion.speed) || o.motion.speed < 0) throw Error('Objek 3D tidak valid.');
+    ids.add(o.id);
+  }
+  return s;
+}
+export function step(scene, dt, keys = new Set()) {
+  dt = Math.min(Math.max(dt, 0), 1 / 30);
+  for (const o of scene.objects) {
+    if (o.motion.enabled) {
+      let x = Number(keys.has('d') || keys.has('ArrowRight')) - Number(keys.has('a') || keys.has('ArrowLeft'));
+      let z = Number(keys.has('s') || keys.has('ArrowDown')) - Number(keys.has('w') || keys.has('ArrowUp'));
+      const length = Math.hypot(x, z) || 1;
+      o.position.x += x / length * o.motion.speed * dt;
+      o.position.z += z / length * o.motion.speed * dt;
+    }
+    if (!o.body.enabled) continue;
+    const bottom = o.position.y - o.scale.y / 2;
+    o.body.vy -= scene.gravity * dt;
+    o.position.y += o.body.vy * dt;
+    for (const floor of scene.objects) {
+      if (floor === o || floor.body.enabled) continue;
+      const top = floor.position.y + floor.scale.y / 2;
+      if (o.body.vy <= 0 && bottom >= top - 0.001 && o.position.y - o.scale.y / 2 <= top &&
+        Math.abs(o.position.x - floor.position.x) < (o.scale.x + floor.scale.x) / 2 &&
+        Math.abs(o.position.z - floor.position.z) < (o.scale.z + floor.scale.z) / 2) {
+        o.position.y = top + o.scale.y / 2;
+        o.body.vy = -o.body.vy * o.body.bounce;
+        if (Math.abs(o.body.vy) < 0.1) o.body.vy = 0;
+      }
+    }
+    if (o.position.y < -100) { o.position.y = 8; o.body.vy = 0; }
+  }
+}
