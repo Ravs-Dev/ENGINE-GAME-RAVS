@@ -1,0 +1,73 @@
+{
+  "engine": {
+    "id": "ravs-engine",
+    "name": "Ravs Engine",
+    "type": "game-engine",
+    "version": "0.1.0",
+    "tagline": "Engine game untuk APK versi Ravs (bukan Unity)"
+  },
+  "projectDefaults": {
+    "renderPipeline": "Ravs Forward+",
+    "targetPlatform": [
+      "Android"
+    ],
+    "defaultResolution": "1920x1080",
+    "frameRate": 60,
+    "language": "C#",
+    "scriptingBackend": "IL2CPP"
+  },
+  "modules": [
+    {
+      "name": "Scene Editor",
+      "enabled": true
+    },
+    {
+      "name": "Asset Manager",
+      "enabled": true
+    },
+    {
+      "name": "Physics",
+      "enabled": true
+    },
+    {
+      "name": "UI Builder",
+      "enabled": true
+    },
+    {
+      "name": "Animation",
+      "enabled": true
+    },
+    {
+      "name": "Audio",
+      "enabled": true
+    }
+  ],
+  "sampleScene": {
+    "name": "MainScene",
+    "objects": [
+      {
+        "name": "Camera",
+        "components": [
+          "Transform",
+          "CameraController"
+        ]
+      },
+      {
+        "name": "DirectionalLight",
+        "components": [
+          "Transform",
+          "Light"
+        ]
+      },
+      {
+        "name": "Player",
+        "components": [
+          "Transform",
+          "MeshRenderer",
+          "Rigidbody",
+          "PlayerController"
+        ]
+      }
+    ]
+  }
+}
