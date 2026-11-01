@@ -1,21 +1,40 @@
 {
   "name": "ravs-engine",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "private": true,
   "type": "module",
   "scripts": {
     "dev": "node server.js",
     "start": "node server.js",
     "test": "node --test tests/scene.test.js",
-    "test:browser": "playwright test"
+    "test:browser": "playwright test",
+    "desktop": "electron .",
+    "dist": "electron-builder",
+    "dist:linux": "electron-builder --linux --publish never",
+    "dist:win": "electron-builder --win --publish never",
+    "pack": "electron-builder --dir --publish never",
+    "test:desktop": "node tests/desktop/smoke.mjs",
+    "build": "esbuild src/editor.js --bundle --format=esm --minify --outfile=build/renderer.js",
+    "prestart": "npm run build",
+    "predesktop": "npm run build",
+    "predist": "npm run build",
+    "predist:linux": "npm run build",
+    "predist:win": "npm run build",
+    "prepack": "npm run build",
+    "pretest:desktop": "npm run build"
   },
   "engines": {
     "node": ">=22"
   },
-  "dependencies": {
+  "devDependencies": {
+    "@playwright/test": "1.56.1",
+    "electron": "45.2.1",
+    "electron-builder": "26.18.0",
+    "esbuild": "0.27.0",
     "three": "0.180.0"
   },
-  "devDependencies": {
-    "@playwright/test": "1.56.1"
-  }
+  "description": "RAVS Engine 3D desktop editor for Windows and Linux",
+  "author": "Ravs-Dev",
+  "main": "desktop/main.cjs",
+  "desktopName": "com.ravs.engine"
 }

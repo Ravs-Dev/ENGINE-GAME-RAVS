@@ -3,11 +3,9 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'none'">
   <title>RAVS Engine 3D</title>
-  <link rel="stylesheet" href="/style.css">
-  <script type="importmap">
-    {"imports":{"three":"/node_modules/three/build/three.module.js","three/addons/":"/node_modules/three/examples/jsm/"}}
-  </script>
+  <link rel="stylesheet" href="./style.css">
 </head>
 <body>
   <header>
@@ -42,6 +40,6 @@
       <p>Rigidbody: gravitasi dan tumbukan vertikal terhadap objek statis. Controller: gerakan pada sumbu X/Z saat Play.</p>
     </aside>
   </main>
-  <script type="module" src="/src/editor.js"></script>
+  <script type="module" src="./build/renderer.js"></script>
 </body>
 </html>

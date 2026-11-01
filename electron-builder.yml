@@ -1,0 +1,36 @@
+appId: com.ravs.engine
+productName: RAVS Engine 3D
+artifactName: RAVS-Engine-3D-${version}-${os}-${arch}.${ext}
+asar: true
+npmRebuild: false
+directories:
+  output: dist
+files:
+  - desktop/main.cjs
+  - index.html
+  - style.css
+  - build/renderer.js
+  - package.json
+win:
+  target:
+    - target: nsis
+      arch: [x64]
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+linux:
+  syncDesktopName: true
+  category: Development
+  target:
+    - target: AppImage
+      arch: [x64]
+    - target: deb
+      arch: [x64]
+  maintainer: Ravs-Dev
+  synopsis: Editor scene game 3D
+  description: Editor game 3D RAVS dengan viewport, transform, dan simulasi.
+toolsets:
+  wine: "1.0.1"
