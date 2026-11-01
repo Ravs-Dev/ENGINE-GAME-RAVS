@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.5.1
+
+- Use a standard 256×256 packaging icon so Linux hicolor menus can locate the new Ravs logo.
+- Preserve the full-resolution logo for the editor and game loading screens.
+
 ## 0.5.0
 
 - Add Project Files with folder/file creation, text/script editing, imports, and project backups.

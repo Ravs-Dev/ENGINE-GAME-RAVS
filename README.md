@@ -55,7 +55,7 @@ Tema editor menjadi hitam dengan aksen cyan. Logo putih-biru diadaptasi dari ref
 
 Atur **Judul game** dan **Durasi minimum** pada panel Loading Screen, lalu klik **Pratinjau Loading**. Logo dan nama **Ravs** muncul saat aplikasi dibuka dan sebelum Play. **Ekspor Game HTML** menghasilkan satu file `game-ravs.html` yang berisi renderer, scene, logo, dan loading screen; game ini dapat dibuka dengan browser WebGL 2 tanpa CDN. Pergerakan WASD/panah dan simulasi bawaan ikut diekspor, tetapi script proyek belum dijalankan. Ini belum mengekspor game menjadi EXE.
 
-**Memperbarui aplikasi:** tutup versi lama lalu instal versi 0.5.0 dari Releases. Aplikasi belum memiliki auto-update. Mengubah source/logo di GitHub tidak mengganti installer versi lama; gunakan installer baru. Backup scene/proyek sebelum memperbarui.
+**Memperbarui aplikasi:** tutup versi lama lalu instal versi 0.5.1 dari Releases. Aplikasi belum memiliki auto-update. Mengubah source/logo di GitHub tidak mengganti installer versi lama; gunakan installer baru. Backup scene/proyek sebelum memperbarui.
 
 ## Fitur dari versi 0.4
 
@@ -102,8 +102,8 @@ Build Windows dijalankan pada Windows; workflow rilis sudah menggunakan runner W
 Workflow `.github/workflows/desktop-release.yml` membangun installer pada runner Windows dan Linux. Pull request menjalankan build, dan **Actions → Desktop installers → Run workflow** menyediakan artefak build manual. Push tag versi untuk membuat GitHub Release beserta installer dan `SHA256SUMS.txt` secara otomatis:
 
 ```sh
-git tag v0.5.0
-git push origin v0.5.0
+git tag v0.5.1
+git push origin v0.5.1
 ```
 
 Untuk rilis berikutnya, perbarui versi `package.json` beserta lockfile dan gunakan tag yang sesuai. Rilis belum tersedia sampai kedua build dan job publikasi berhasil. Jangan commit `dist/` atau executable ke source Git.
