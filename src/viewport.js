@@ -35,7 +35,7 @@ export function createViewport(canvas, onSelect, onTransform, onTransformEnd) {
     ray.setFromCamera(pointer, camera);
     onSelect(ray.intersectObjects(group.children)[0]?.object.userData.id ?? null);
   });
-  const meshes = new Map();
+  const meshes = new Map(); let wireframe = false; let shadows = true;
   function sync(scene, selected, playing) {
     world.background.set(scene.background ?? '#080808');
     grid.visible = scene.grid ?? true;
@@ -45,17 +45,29 @@ export function createViewport(canvas, onSelect, onTransform, onTransformEnd) {
     for (const o of scene.objects) {
       let m = meshes.get(o.id);
       if (!m) {
-        m = new THREE.Mesh(o.kind === 'sphere' ? new THREE.SphereGeometry(0.5, 32, 20) : o.kind === 'cylinder' ? new THREE.CylinderGeometry(0.5, 0.5, 1, 32) : new THREE.BoxGeometry(), new THREE.MeshStandardMaterial({ roughness: 0.65 }));
+        m = new THREE.Mesh(
+          o.kind === 'sphere' ? new THREE.SphereGeometry(0.5, 32, 20) :
+          o.kind === 'cylinder' ? new THREE.CylinderGeometry(0.5, 0.5, 1, 32) :
+          o.kind === 'plane' ? new THREE.PlaneGeometry(1, 1) :
+          o.kind === 'cone' ? new THREE.ConeGeometry(0.5, 1, 32) :
+          new THREE.BoxGeometry(),
+          new THREE.MeshStandardMaterial({ roughness: 0.65, side: THREE.DoubleSide })
+        );
         m.userData.id = o.id; m.userData.kind = o.kind; m.castShadow = m.receiveShadow = true; meshes.set(o.id, m); group.add(m);
       }
       if (m.userData.kind !== o.kind) {
         m.geometry.dispose();
-        m.geometry = o.kind === 'sphere' ? new THREE.SphereGeometry(0.5, 32, 20) : o.kind === 'cylinder' ? new THREE.CylinderGeometry(0.5, 0.5, 1, 32) : new THREE.BoxGeometry();
+        m.geometry =
+          o.kind === 'sphere' ? new THREE.SphereGeometry(0.5, 32, 20) :
+          o.kind === 'cylinder' ? new THREE.CylinderGeometry(0.5, 0.5, 1, 32) :
+          o.kind === 'plane' ? new THREE.PlaneGeometry(1, 1) :
+          o.kind === 'cone' ? new THREE.ConeGeometry(0.5, 1, 32) :
+          new THREE.BoxGeometry();
         m.userData.kind = o.kind;
       }
       m.position.set(o.position.x, o.position.y, o.position.z);
       m.rotation.set(...['x', 'y', 'z'].map(a => THREE.MathUtils.degToRad(o.rotation[a])));
-      m.scale.set(o.scale.x, o.scale.y, o.scale.z); m.material.color.set(o.color);
+      m.scale.set(o.scale.x, o.scale.y, o.scale.z); m.material.color.set(o.color); m.material.wireframe = wireframe;
     }
     const m = meshes.get(selected);
     if (m && !playing) { if (gizmo.object !== m) gizmo.attach(m); outline.setFromObject(m); outline.visible = true; }
@@ -84,7 +96,7 @@ export function createViewport(canvas, onSelect, onTransform, onTransformEnd) {
     camera.position.copy(orbit.target).addScaledVector(new THREE.Vector3(...d),distance);
     orbit.update();
   }
-  return { sync, frameAll, setView, setSnap: enabled => { gizmo.setTranslationSnap(enabled ? 0.5 : null); gizmo.setRotationSnap(enabled ? Math.PI / 12 : null); gizmo.setScaleSnap(enabled ? 0.25 : null); }, setMode: mode => gizmo.setMode(mode), focus(id) {
+  return { sync, frameAll, setView, setWireframe: enabled => { wireframe = !!enabled; }, setShadows: enabled => { shadows = !!enabled; renderer.shadowMap.enabled = shadows; for (const m of meshes.values()) m.castShadow = m.receiveShadow = shadows; }, setSnap: enabled => { gizmo.setTranslationSnap(enabled ? 0.5 : null); gizmo.setRotationSnap(enabled ? Math.PI / 12 : null); gizmo.setScaleSnap(enabled ? 0.25 : null); }, setMode: mode => gizmo.setMode(mode), focus(id) {
     const m = meshes.get(id); if (!m) return;
     orbit.target.copy(m.position); camera.position.copy(m.position).add(new THREE.Vector3(5, 4, 6)); orbit.update();
   }, render() {

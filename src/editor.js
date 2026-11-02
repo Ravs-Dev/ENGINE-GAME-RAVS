@@ -99,13 +99,13 @@ function refresh() {
     }
   } else inspector.textContent = 'Pilih objek di viewport atau hierarchy.';
   $('name').value = scene.name; $('gravity').value = scene.gravity; $('sceneName').textContent = scene.name;
-  for (const id of ['box', 'sphere', 'cylinder', 'new', 'background', 'grid', 'snap', 'exportGame', 'demo', 'save', 'export', 'import', 'name', 'gravity', 'mode']) $(id).disabled = !!backup;
+  for (const id of ['box', 'sphere', 'cylinder', 'plane', 'cone', 'new', 'background', 'grid', 'snap', 'wireframe', 'shadows', 'exportGame', 'demo', 'save', 'export', 'import', 'name', 'gravity', 'mode']) $(id).disabled = !!backup;
   $('background').value = scene.background ?? '#080808';
   $('grid').checked = scene.grid ?? true;
   refreshHistory();
   viewport?.sync(scene, selected, !!backup);
 }
-for (const kind of ['box', 'sphere', 'cylinder']) $(kind).onclick = () => { const o = createObject(kind); scene.objects.push(o); selected = o.id; record(); refresh(); };
+for (const kind of ['box', 'sphere', 'cylinder', 'plane', 'cone']) $(kind).onclick = () => { const o = createObject(kind); scene.objects.push(o); selected = o.id; record(); refresh(); };
 $('undo').onclick = () => restoreHistory('undo');
 $('redo').onclick = () => restoreHistory('redo');
 $('search').oninput = refresh;
@@ -113,6 +113,8 @@ $('background').onchange = e => { scene.background = e.target.value; record(); r
 $('grid').onchange = e => { scene.grid = e.target.checked; record(); refresh(); };
 $('snap').onchange = e => viewport?.setSnap(e.target.checked);
 $('cameraView').onchange = e => viewport?.setView(e.target.value);
+$('wireframe').onchange = e => viewport?.setWireframe(e.target.checked);
+$('shadows').onchange = e => viewport?.setShadows(e.target.checked);
 $('frameAll').onclick = () => viewport?.frameAll();
 $('focusSelection').onclick = () => viewport?.focus(selected);
 $('new').onclick = () => {
