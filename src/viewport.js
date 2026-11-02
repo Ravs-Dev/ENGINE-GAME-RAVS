@@ -61,7 +61,30 @@ export function createViewport(canvas, onSelect, onTransform, onTransformEnd) {
     if (m && !playing) { if (gizmo.object !== m) gizmo.attach(m); outline.setFromObject(m); outline.visible = true; }
     else { gizmo.detach(); outline.visible = false; }
   }
-  return { sync, setSnap: enabled => { gizmo.setTranslationSnap(enabled ? 0.5 : null); gizmo.setRotationSnap(enabled ? Math.PI / 12 : null); gizmo.setScaleSnap(enabled ? 0.25 : null); }, setMode: mode => gizmo.setMode(mode), focus(id) {
+  function frameAll() {
+    if (!group.children.length) { orbit.target.set(0, 0, 0); camera.position.set(12, 10, 14); orbit.update(); return; }
+    const bounds = new THREE.Box3().setFromObject(group);
+    const center = bounds.getCenter(new THREE.Vector3());
+    const radius = Math.max(2, bounds.getSize(new THREE.Vector3()).length() * 0.7);
+    const direction = camera.position.clone().sub(orbit.target).normalize();
+    orbit.target.copy(center);
+    camera.position.copy(center).addScaledVector(direction, radius * 2);
+    camera.near = Math.max(0.01, radius / 1000);
+    camera.far = Math.max(500, radius * 20);
+    camera.updateProjectionMatrix();
+    orbit.update();
+  }
+  function setView(view) {
+    if (view === 'perspective') { camera.up.set(0, 1, 0); camera.position.copy(orbit.target).add(new THREE.Vector3(12, 10, 14)); orbit.update(); return; }
+    const directions = { front:[0,0,1],back:[0,0,-1],left:[-1,0,0],right:[1,0,0],top:[0,1,0],bottom:[0,-1,0] };
+    const d = directions[view];
+    if (!d) return;
+    const distance = Math.max(5, camera.position.distanceTo(orbit.target));
+    camera.up.set(0, view === 'top' || view === 'bottom' ? 0 : 1, view === 'top' ? -1 : view === 'bottom' ? 1 : 0);
+    camera.position.copy(orbit.target).addScaledVector(new THREE.Vector3(...d),distance);
+    orbit.update();
+  }
+  return { sync, frameAll, setView, setSnap: enabled => { gizmo.setTranslationSnap(enabled ? 0.5 : null); gizmo.setRotationSnap(enabled ? Math.PI / 12 : null); gizmo.setScaleSnap(enabled ? 0.25 : null); }, setMode: mode => gizmo.setMode(mode), focus(id) {
     const m = meshes.get(id); if (!m) return;
     orbit.target.copy(m.position); camera.position.copy(m.position).add(new THREE.Vector3(5, 4, 6)); orbit.update();
   }, render() {
