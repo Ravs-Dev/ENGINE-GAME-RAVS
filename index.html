@@ -33,6 +33,7 @@
     </aside>
     <section class="viewport">
       <div class="viewbar">Scene <span>Perspektif · WebGL 2</span></div>
+      <div class="camera-toolbar" aria-label="Tampilan kamera"><label>Kamera <select id="cameraView"><option value="perspective">Perspektif</option><option value="front">Depan</option><option value="back">Belakang</option><option value="left">Kiri</option><option value="right">Kanan</option><option value="top">Atas</option><option value="bottom">Bawah</option></select></label><button id="frameAll" title="Tampilkan seluruh objek (Home)">Frame All</button><button id="focusSelection" title="Fokus objek (F)">Fokus</button></div>
       <label>Transform<select id="mode"><option value="translate">Move</option><option value="rotate">Rotate</option><option value="scale">Scale</option></select></label>
       <label>Snap: 0.5 unit / 15°<input id="snap" type="checkbox"></label>
       <canvas id="canvas" tabindex="0" aria-label="Scene editor 3D"></canvas>

@@ -112,6 +112,9 @@ $('search').oninput = refresh;
 $('background').onchange = e => { scene.background = e.target.value; record(); refresh(); };
 $('grid').onchange = e => { scene.grid = e.target.checked; record(); refresh(); };
 $('snap').onchange = e => viewport?.setSnap(e.target.checked);
+$('cameraView').onchange = e => viewport?.setView(e.target.value);
+$('frameAll').onclick = () => viewport?.frameAll();
+$('focusSelection').onclick = () => viewport?.focus(selected);
 $('new').onclick = () => {
   if (!confirm('Buat scene kosong? Scene saat ini bisa dipulihkan dengan Undo.')) return;
   scene = { version: 2, name: 'Untitled Scene', gravity: 9.81, background: '#080808', grid: true, objects: [] };
@@ -148,6 +151,7 @@ window.addEventListener('keydown', e => {
   if (!backup && key === 'Delete') {
     e.preventDefault(); [...$('inspector').querySelectorAll('button')].find(b => b.textContent === 'Hapus')?.click(); return;
   }
+  if (key === 'Home') { e.preventDefault(); viewport?.frameAll(); return; }
   if (!backup && key === 'f') { viewport?.focus(selected); return; }
   if (!backup && ['w', 'e', 'r'].includes(key)) {
     $('mode').value = { w: 'translate', e: 'rotate', r: 'scale' }[key]; viewport?.setMode($('mode').value); return;
