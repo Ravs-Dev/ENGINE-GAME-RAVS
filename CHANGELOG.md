@@ -2,6 +2,10 @@
 
 ## 0.5.1
 
+- Add camera presets, Frame All, and focus controls for faster scene navigation.
+- Add Plane and Cone primitives to the scene editor.
+- Add Wireframe viewport mode and a global Shadows toggle.
+- Improve viewport controls while keeping scene format compatibility with existing v2 projects.
 - Use a standard 256×256 packaging icon so Linux hicolor menus can locate the new Ravs logo.
 - Preserve the full-resolution logo for the editor and game loading screens.
 
