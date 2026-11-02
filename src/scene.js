@@ -1,6 +1,6 @@
 const finite = n => typeof n === 'number' && Number.isFinite(n) && Math.abs(n) <= 10000;
 export function createObject(kind = 'box', id = crypto.randomUUID()) {
-  return { id, name: kind === 'sphere' ? 'Sphere' : kind === 'cylinder' ? 'Cylinder' : 'Cube', kind,
+  return { id, name: kind === 'sphere' ? 'Sphere' : kind === 'cylinder' ? 'Cylinder' : kind === 'plane' ? 'Plane' : kind === 'cone' ? 'Cone' : 'Cube', kind,
     position: { x: 0, y: 1, z: 0 }, rotation: { x: 0, y: 0, z: 0 },
     scale: { x: 1, y: 1, z: 1 }, color: '#00c8f5',
     body: { enabled: false, vy: 0, bounce: 0.3 }, motion: { enabled: false, speed: 4 } };
@@ -22,7 +22,7 @@ export function parseScene(text) {
   if (!/^#[0-9a-f]{6}$/i.test(s.background) || typeof s.grid !== 'boolean') throw Error('Pengaturan scene tidak valid.');
   const ids = new Set();
   for (const o of s.objects) {
-    if (!o || typeof o.id !== 'string' || ids.has(o.id) || typeof o.name !== 'string' || !['box', 'sphere', 'cylinder'].includes(o.kind) ||
+    if (!o || typeof o.id !== 'string' || ids.has(o.id) || typeof o.name !== 'string' || !['box', 'sphere', 'cylinder', 'plane', 'cone'].includes(o.kind) ||
       !['position', 'rotation', 'scale'].every(k => o[k] && ['x', 'y', 'z'].every(a => finite(o[k][a]))) ||
       !['x', 'y', 'z'].every(a => o.scale[a] > 0) || !/^#[0-9a-f]{6}$/i.test(o.color) ||
       typeof o.body?.enabled !== 'boolean' || !finite(o.body.vy) || !finite(o.body.bounce) || o.body.bounce < 0 || o.body.bounce > 1 ||
