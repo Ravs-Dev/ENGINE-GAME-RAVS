@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.6.0
+
+- Add component-style object model with Active, Tag, Layer, PBR material, render settings, and Script Components.
+- Add Torus, Point Light, and Directional Light scene objects.
+- Add environment controls for ambient light, sun light, exposure, and fog.
+- Add multi-language Script Component profiles for Lua, C, C++, C#, and Java.
+- Add desktop Toolchain Manager detection for Lua, GCC/Clang/MSVC, .NET, and Java.
+- Keep existing version-2 scenes compatible by filling new component defaults during load.
+
+
 ## 0.5.1
 
 - Add camera presets, Frame All, and focus controls for faster scene navigation.
