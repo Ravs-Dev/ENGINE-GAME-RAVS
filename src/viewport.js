@@ -15,7 +15,8 @@ export function createViewport(canvas, onSelect, onTransform, onTransformEnd) {
   const renderer = new THREE.WebGLRenderer({canvas,antialias:true});
   renderer.setPixelRatio(Math.min(devicePixelRatio,2)); renderer.shadowMap.enabled=true;
   renderer.outputColorSpace = THREE.SRGBColorSpace;
-  const world=new THREE.Scene(), camera=new THREE.PerspectiveCamera(50,1,0.1,2000); camera.position.set(12,10,14);
+  const world=new THREE.Scene(); world.background=new THREE.Color('#080808');
+  const camera=new THREE.PerspectiveCamera(50,1,0.1,2000); camera.position.set(12,10,14);
   const orbit=new OrbitControls(camera,canvas); orbit.target.set(0,1,0); orbit.update();
   const ambient=new THREE.HemisphereLight(0xc9e4ff,0x222222,2); world.add(ambient);
   const sun=new THREE.DirectionalLight(0xffffff,3); sun.position.set(5,12,7); sun.castShadow=true; sun.shadow.mapSize.set(2048,2048); world.add(sun);
