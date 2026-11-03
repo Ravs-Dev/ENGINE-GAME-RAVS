@@ -38,3 +38,25 @@ test('legacy 3D scenes receive settings and cylinders roundtrip', () => {
   assert.equal(loaded.objects.at(-1).kind, 'cylinder');
   loaded.grid = 'true'; assert.throws(() => parseScene(JSON.stringify(loaded)));
 });
+
+test('new engine components roundtrip with PBR, lights, fog and scripts', () => {
+  const s = demoScene();
+  s.environment.fogEnabled = true; s.environment.fogNear = 5; s.environment.fogFar = 50;
+  const light = createObject('pointLight'); light.light.intensity = 7;
+  const torus = createObject('torus'); torus.material.metalness = 0.8; torus.scripts.push({id:'script-1',language:'lua',path:'Scripts/Main.lua',enabled:true});
+  s.objects.push(light, torus);
+  const loaded = parseScene(JSON.stringify(s));
+  assert.equal(loaded.objects.at(-2).kind, 'pointLight');
+  assert.equal(loaded.objects.at(-1).material.metalness, 0.8);
+  assert.equal(loaded.objects.at(-1).scripts[0].language, 'lua');
+  assert.equal(loaded.environment.fogEnabled, true);
+});
+test('legacy v2 scenes receive new component defaults', () => {
+  const old = demoScene(); delete old.environment;
+  for (const o of old.objects) { delete o.material; delete o.render; delete o.active; delete o.tag; delete o.layer; delete o.scripts; }
+  const loaded = parseScene(JSON.stringify(old));
+  assert.equal(loaded.environment.exposure, 1);
+  assert.equal(loaded.objects[0].active, true);
+  assert.equal(loaded.objects[0].material.roughness, 0.65);
+  assert.deepEqual(loaded.objects[0].scripts, []);
+});
