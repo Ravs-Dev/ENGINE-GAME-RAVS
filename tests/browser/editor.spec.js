@@ -8,6 +8,15 @@ test('3D renderer, transforms, persistence and Play/Stop', async ({ page }) => {
   await expect(page.locator('.engine-menubar')).toContainText('GameObject');
   await expect(page.locator('#toolMove')).toHaveClass(/active/);
   await expect(page.locator('#sceneTab')).toHaveClass(/active/);
+  await expect(page.getByText('World Outliner', {exact:true})).toBeVisible();
+  await expect(page.getByText('Details', {exact:true})).toBeVisible();
+  await expect(page.getByText('Content Browser', {exact:true})).toBeVisible();
+  await page.locator('#shadingMode').selectOption('unlit');
+  await page.locator('#shadingMode').selectOption('wireframe');
+  await page.locator('#shadingMode').selectOption('lit');
+  await page.locator('#gizmoSpace').selectOption('local');
+  await page.locator('#gizmoSpace').selectOption('world');
+  await page.locator('#cameraSpeed').selectOption('2');
   await expect(page.locator('#status')).not.toContainText('gagal');
   const rendered = await page.locator('canvas').evaluate(canvas => {
     const gl = canvas.getContext('webgl2'); return !!gl && gl.drawingBufferWidth > 0 && gl.getError() === gl.NO_ERROR;
@@ -30,6 +39,9 @@ test('3D renderer, transforms, persistence and Play/Stop', async ({ page }) => {
   const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('ravs.scene.3d.v2')));
   expect(saved.objects.at(-1).position.x).toBe(3);
   await page.locator('#hierarchy button').filter({ hasText: 'Player' }).click();
+  await page.locator('#simulate').click();
+  await expect(page.locator('#modeBadge')).toHaveText('Simulating');
+  await page.locator('#simulate').click();
   await page.locator('#play').click();
   await expect(page.locator('#gameTab')).toHaveClass(/active/);
   await expect(page.locator('#pause')).toBeEnabled();
@@ -152,6 +164,9 @@ test('project folders, script editing and branded standalone game export', async
   await page.locator('#importProject').setInputFiles('/tmp/ravs-test-backup.json');
   await expect(page.locator('#status')).toHaveText('Backup proyek berhasil dibuka sebagai proyek lokal.');
   await page.locator('[data-path="Gameplay/Player.js"]').click();await expect(page.locator('#code')).toHaveValue(script);
-  await page.screenshot({path:'/tmp/ravs-050-editor.png',fullPage:true});
+  await page.locator('#contentDrawer').click(); await expect(page.locator('#contentWorkspace')).toHaveClass(/drawer-collapsed/);
+  await page.locator('#contentDrawer').click(); await expect(page.locator('#contentWorkspace')).not.toHaveClass(/drawer-collapsed/);
+  await page.locator('#outputLog').click(); await expect(page.locator('#consoleView')).toBeVisible();
+  await page.screenshot({path:'/tmp/ravs-070-editor.png',fullPage:true});
   expect(errors).toEqual([]);
 });

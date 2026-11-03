@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.7.0
+
+- Rework the editor into an Unreal-inspired Level Editor layout while retaining RAVS branding.
+- Rename Hierarchy/Inspector concepts to World Outliner and Details and Project Files to Content Browser.
+- Add functional Lit, Unlit, and Wireframe viewport shading modes.
+- Add World/Local transform space, adjustable camera speed, actor/triangle/FPS viewport statistics.
+- Add Simulate mode alongside Play/Pause/Step.
+- Add collapsible Content Drawer and Output Log dock controls.
+- Keep existing scene format, project files, materials, lights, toolchains, and desktop export compatible.
+
+
 ## 0.6.1
 
 - Redesign editor chrome to a Unity-inspired RAVS layout without copying Unity branding.

@@ -7,7 +7,7 @@ import { History } from './history.js';
 import { createViewport } from './viewport.js';
 const $ = id => document.getElementById(id);
 const keys = new Set(), storageKey = 'ravs.scene.3d.v2';
-let scene = demoScene(), selected = scene.objects[1].id, backup = null, last = 0, paused = false, stepOnce = false, activeView = 'scene';
+let scene = demoScene(), selected = scene.objects[1].id, backup = null, last = 0, paused = false, stepOnce = false, activeView = 'scene', simulating = false, fpsTime = performance.now(), fpsFrames = 0;
 const consoleEntries = [];
 function pushConsole(text, level='log') {
   consoleEntries.push({time:new Date().toLocaleTimeString(),text:String(text),level});
@@ -169,6 +169,9 @@ for (const [id,key,type] of [['ambientColor','ambientColor','color'],['ambientIn
 }
 $('snap').onchange = e => viewport?.setSnap(e.target.checked);
 $('cameraView').onchange = e => viewport?.setView(e.target.value);
+$('shadingMode').onchange = e => { viewport?.setShading(e.target.value); status('Viewport '+e.target.options[e.target.selectedIndex].text+' aktif.'); };
+$('gizmoSpace').onchange = e => { viewport?.setSpace(e.target.value); status('Transform space: '+e.target.value+'.'); };
+$('cameraSpeed').onchange = e => viewport?.setCameraSpeed(e.target.value);
 $('wireframe').onchange = e => viewport?.setWireframe(e.target.checked);
 $('shadows').onchange = e => viewport?.setShadows(e.target.checked);
 $('frameAll').onclick = () => viewport?.frameAll();
@@ -192,15 +195,22 @@ $('import').onchange = async e => {
 $('demo').onclick = () => { if (confirm('Ganti scene aktif dengan demo 3D? Ekspor dahulu untuk backup.')) { scene = demoScene(); selected = scene.objects[1].id; record(); refresh(); } };
 function updatePlayUI() {
   $('play').textContent = backup ? '■' : '▶'; $('play').classList.toggle('playing',!!backup);
-  $('pause').disabled = !backup; $('step').disabled = !backup; $('pause').classList.toggle('active',paused);
-  $('modeBadge').textContent = backup ? (paused ? 'Paused' : 'Play Mode') : 'Edit Mode';
+  $('pause').disabled = !backup; $('step').disabled = !backup; $('pause').classList.toggle('active',paused); $('simulate').classList.toggle('active',simulating);
+  $('modeBadge').textContent = backup ? (paused ? 'Paused' : simulating ? 'Simulating' : 'Play Mode') : 'Edit Mode';
   $('gameTab').classList.toggle('active', activeView==='game'); $('sceneTab').classList.toggle('active',activeView==='scene');
 }
-$('play').onclick = () => {
-  if (backup) { scene = backup; backup = null; paused=false; stepOnce=false; keys.clear(); hideSplash(); activeView='scene'; status('Edit mode'); }
-  else { backup = structuredClone(scene); paused=false; stepOnce=false; activeView='game'; $('canvas').focus(); status('Play mode · WASD / tombol panah'); showSplash(); }
-  updatePlayUI(); refresh();
-};
+function stopRuntime() {
+  if (!backup) return;
+  scene=backup; backup=null; paused=false; stepOnce=false; simulating=false; keys.clear(); hideSplash(); activeView='scene'; status('Edit mode');
+}
+function startRuntime(mode) {
+  if (backup) return;
+  backup=structuredClone(scene); paused=false; stepOnce=false; simulating=mode==='simulate'; activeView=simulating?'scene':'game'; $('canvas').focus();
+  status(simulating?'Simulate mode · physics berjalan di Scene viewport.':'Play mode · WASD / tombol panah');
+  if (!simulating) showSplash();
+}
+$('play').onclick = () => { backup ? stopRuntime() : startRuntime('play'); updatePlayUI(); refresh(); };
+$('simulate').onclick = () => { backup ? stopRuntime() : startRuntime('simulate'); updatePlayUI(); refresh(); };
 $('pause').onclick = () => { if (!backup) return; paused=!paused; keys.clear(); status(paused?'Play mode dijeda.':'Play mode dilanjutkan.'); updatePlayUI(); };
 $('step').onclick = () => { if (!backup) return; paused=true; stepOnce=true; status('Step satu frame.'); updatePlayUI(); };
 $('sceneTab').onclick = () => { activeView='scene'; updatePlayUI(); status('Scene view aktif.'); };
@@ -242,8 +252,14 @@ window.addEventListener('keyup', e => keys.delete(e.key.length === 1 ? e.key.toL
 window.addEventListener('blur', () => keys.clear());
 function frame(time) {
   if (backup && !splashActive && (!paused || stepOnce)) { step(scene,(time-last)/1000,keys); stepOnce=false; }
-  last = time;
-  viewport?.sync(scene, selected, !!backup); viewport?.render(); requestAnimationFrame(frame);
+  last=time; viewport?.sync(scene,selected,!!backup); viewport?.render();
+  fpsFrames++;
+  if (time-fpsTime>=500) {
+    const fps=Math.round(fpsFrames*1000/(time-fpsTime)), stats=viewport?.stats?.()??{triangles:0};
+    $('viewportStats').textContent=fps+' FPS · '+scene.objects.length+' Actors · '+stats.triangles.toLocaleString()+' Tris';
+    fpsFrames=0;fpsTime=time;
+  }
+  requestAnimationFrame(frame);
 }
 projectPanel = createProjectPanel({
   getScene: () => structuredClone(backup ?? scene), getSplash: () => ({...splash}), status,
@@ -259,8 +275,10 @@ for (const [id,mode] of [['toolMove','translate'],['toolRotate','rotate'],['tool
 }
 $('toolHand').onclick=()=>{ if(backup)return; for(const b of ['toolMove','toolRotate','toolScale','toolHand']) $(b).classList.toggle('active',b==='toolHand'); status('Hand/View tool aktif.'); };
 $('mode').onchange = e => { viewport?.setMode(e.target.value); const id={translate:'toolMove',rotate:'toolRotate',scale:'toolScale'}[e.target.value]; for(const b of ['toolMove','toolRotate','toolScale','toolHand']) $(b).classList.toggle('active',b===id); };
-$('projectTab').onclick=()=>{ $('projectView').hidden=false; $('consoleView').hidden=true; $('projectTab').classList.add('active'); $('consoleTab').classList.remove('active'); };
-$('consoleTab').onclick=()=>{ $('projectView').hidden=true; $('consoleView').hidden=false; $('consoleTab').classList.add('active'); $('projectTab').classList.remove('active'); };
+$('projectTab').onclick=()=>{ $('contentWorkspace').classList.remove('drawer-collapsed'); $('projectView').hidden=false; $('consoleView').hidden=true; $('projectTab').classList.add('active'); $('consoleTab').classList.remove('active'); };
+$('consoleTab').onclick=()=>{ $('contentWorkspace').classList.remove('drawer-collapsed'); $('projectView').hidden=true; $('consoleView').hidden=false; $('consoleTab').classList.add('active'); $('projectTab').classList.remove('active'); };
+$('contentDrawer').onclick=()=>{ $('contentWorkspace').classList.toggle('drawer-collapsed'); status($('contentWorkspace').classList.contains('drawer-collapsed')?'Content Drawer ditutup.':'Content Drawer dibuka.'); };
+$('outputLog').onclick=()=>{ $('contentWorkspace').classList.remove('drawer-collapsed'); $('consoleTab').click(); status('Output Log dibuka.'); };
 $('clearConsole').onclick=()=>{ consoleEntries.length=0; $('consoleOutput').replaceChildren(); $('consoleCount').textContent='0'; };
 const menuPopup = $('engineMenuPopup');
 function selectedObject() { return scene.objects.find(o=>o.id===selected); }
@@ -299,11 +317,11 @@ const menuDefinitions = {
     ['Rigidbody',()=>addComponent('rigidbody')],['Controller',()=>addComponent('controller')],['Script',()=>addComponent('script')]
   ],
   window:[
-    ['Project',()=>$('projectTab').click()],['Console',()=>$('consoleTab').click()],
+    ['Content Browser',()=>$('projectTab').click()],['Output Log',()=>$('consoleTab').click()],
     ['Toolchain Manager',()=>{ $('scanToolchains').scrollIntoView({behavior:'smooth',block:'center'}); status('Toolchain Manager ditampilkan.'); }]
   ],
   help:[
-    ['About RAVS Engine',()=>status('RAVS Engine 3D v0.6.1 · editor game 3D desktop.')],
+    ['About RAVS Engine',()=>status('RAVS Engine 3D v0.7.0 · editor game 3D desktop.')],
     ['Controls',()=>status('Q View · W Move · E Rotate · R Scale · F Focus · Ctrl+S Save · Ctrl+D Duplicate')]
   ]
 };
