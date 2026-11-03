@@ -33,7 +33,8 @@ export function createObject(kind = 'box', id = crypto.randomUUID()) {
     material: { roughness: 0.65, metalness: 0, emissive: '#000000', emissiveIntensity: 0, wireframe: false },
     render: { castShadow: true, receiveShadow: true },
     body: { enabled: false, vy: 0, bounce: 0.3 },
-    motion: { enabled: false, speed: 4 }
+    motion: { enabled: false, speed: 4 },
+    scripts: []
   };
   if (LIGHT_KINDS.includes(kind)) object.light = { color: '#ffffff', intensity: kind === 'pointLight' ? 4 : 3, distance: kind === 'pointLight' ? 20 : 0, decay: 2 };
   return object;
@@ -61,6 +62,7 @@ function applyDefaults(s) {
     o.layer ??= 0;
     o.material = { roughness: 0.65, metalness: 0, emissive: '#000000', emissiveIntensity: 0, wireframe: false, ...(o.material ?? {}) };
     o.render = { castShadow: true, receiveShadow: true, ...(o.render ?? {}) };
+    o.scripts ??= [];
     if (LIGHT_KINDS.includes(o.kind)) o.light = { color: '#ffffff', intensity: o.kind === 'pointLight' ? 4 : 3, distance: o.kind === 'pointLight' ? 20 : 0, decay: 2, ...(o.light ?? {}) };
   }
   return s;
@@ -90,7 +92,9 @@ export function parseScene(text) {
       !finite(o.material.emissiveIntensity) || o.material.emissiveIntensity < 0 || o.material.emissiveIntensity > 10 || typeof o.material.wireframe !== 'boolean' ||
       !o.render || typeof o.render.castShadow !== 'boolean' || typeof o.render.receiveShadow !== 'boolean' ||
       typeof o.body?.enabled !== 'boolean' || !finite(o.body.vy) || !finite(o.body.bounce) || o.body.bounce < 0 || o.body.bounce > 1 ||
-      typeof o.motion?.enabled !== 'boolean' || !finite(o.motion.speed) || o.motion.speed < 0 || !lightValid) throw Error('Objek 3D tidak valid.');
+      typeof o.motion?.enabled !== 'boolean' || !finite(o.motion.speed) || o.motion.speed < 0 ||
+      !Array.isArray(o.scripts) || o.scripts.length > 32 || o.scripts.some(s => !s || typeof s.id !== 'string' || typeof s.path !== 'string' || s.path.length > 240 ||
+        !['lua','c','cpp','csharp','java'].includes(s.language) || typeof s.enabled !== 'boolean') || !lightValid) throw Error('Objek 3D tidak valid.');
     ids.add(o.id);
   }
   return s;
