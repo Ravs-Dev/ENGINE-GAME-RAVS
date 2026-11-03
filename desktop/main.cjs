@@ -1,5 +1,8 @@
 const { app, BrowserWindow, Menu, dialog, session, ipcMain } = require('electron');
 const path = require('node:path');
+const { execFile } = require('node:child_process');
+const { promisify } = require('node:util');
+const execFileAsync = promisify(execFile);
 
 app.setName('RAVS Engine 3D');
 app.setAppUserModelId('com.ravs.engine');
@@ -38,6 +41,27 @@ app.whenReady().then(() => {
   handler('project:read', relative => projectStore.read(relative));
   handler('project:create', (relative, type, content) => projectStore.create(relative, type, content));
   handler('project:write', (relative, content, revision) => projectStore.write(relative, content, revision));
+  handler('toolchains:scan', async () => {
+    const specs = [
+      { language:'lua', commands:[['lua',['-v']]] },
+      { language:'c', commands: process.platform === 'win32' ? [['clang',['--version']],['gcc',['--version']],['cl',[]]] : [['clang',['--version']],['gcc',['--version']]] },
+      { language:'cpp', commands: process.platform === 'win32' ? [['clang++',['--version']],['g++',['--version']],['cl',[]]] : [['clang++',['--version']],['g++',['--version']]] },
+      { language:'csharp', commands:[['dotnet',['--version']]] },
+      { language:'java', commands:[['java',['-version']]] }
+    ];
+    const results=[];
+    for (const spec of specs) {
+      let found=null;
+      for (const [cmd,args] of spec.commands) {
+        try {
+          const { stdout='', stderr='' } = await execFileAsync(cmd,args,{timeout:2500,windowsHide:true});
+          found={command:cmd,version:(stdout||stderr).split(/\r?\n/).filter(Boolean)[0]?.slice(0,160)||cmd}; break;
+        } catch { }
+      }
+      results.push({language:spec.language,available:!!found,command:found?.command??null,version:found?.version??null});
+    }
+    return results;
+  });
 
   session.defaultSession.setPermissionRequestHandler((_contents, _permission, callback) => callback(false));
   session.defaultSession.setPermissionCheckHandler(() => false);
