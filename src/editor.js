@@ -2,7 +2,7 @@ import logo from '../assets/ravs-logo.png';
 import { createProjectPanel } from './project-panel.js';
 import { createGameHTML, validateSplash } from './game-export.js';
 import { download } from './project.js';
-import { createObject, demoScene, parseScene, step } from './scene.js';
+import { createObject, createScene, demoScene, parseScene, step, LIGHT_KINDS } from './scene.js';
 import { History } from './history.js';
 import { createViewport } from './viewport.js';
 const $ = id => document.getElementById(id);
@@ -84,11 +84,47 @@ function refresh() {
       const title = document.createElement('h2'); title.textContent = label; inspector.append(title);
       for (const a of ['x', 'y', 'z']) field(inspector, a.toUpperCase(), o[key], a, 'number', key === 'scale' ? 0.05 : -10000, key === 'scale' ? 1000 : 10000);
     }
+    field(inspector, 'Active', o, 'active', 'checkbox');
+    field(inspector, 'Tag', o, 'tag', 'text');
+    field(inspector, 'Layer', o, 'layer', 'number', 0, 31);
     field(inspector, 'Warna', o, 'color', 'color');
+    if (LIGHT_KINDS.includes(o.kind)) {
+      const lt = document.createElement('h2'); lt.textContent = 'Light'; inspector.append(lt);
+      field(inspector, 'Color', o.light, 'color', 'color');
+      field(inspector, 'Intensity', o.light, 'intensity', 'number', 0, 100);
+      if (o.kind === 'pointLight') {
+        field(inspector, 'Distance', o.light, 'distance', 'number', 0, 10000);
+        field(inspector, 'Decay', o.light, 'decay', 'number', 0, 10);
+      }
+    } else {
+      const mt = document.createElement('h2'); mt.textContent = 'Material PBR'; inspector.append(mt);
+      field(inspector, 'Roughness', o.material, 'roughness', 'number', 0, 1);
+      field(inspector, 'Metalness', o.material, 'metalness', 'number', 0, 1);
+      field(inspector, 'Emissive', o.material, 'emissive', 'color');
+      field(inspector, 'Emissive Power', o.material, 'emissiveIntensity', 'number', 0, 10);
+      field(inspector, 'Wireframe', o.material, 'wireframe', 'checkbox');
+      field(inspector, 'Cast Shadow', o.render, 'castShadow', 'checkbox');
+      field(inspector, 'Receive Shadow', o.render, 'receiveShadow', 'checkbox');
+    }
     field(inspector, 'Rigidbody', o.body, 'enabled', 'checkbox');
     field(inspector, 'Bounce', o.body, 'bounce', 'number', 0, 1);
     field(inspector, 'Controller', o.motion, 'enabled', 'checkbox');
     field(inspector, 'Kecepatan', o.motion, 'speed', 'number', 0, 100);
+    const st = document.createElement('h2'); st.textContent = 'Script Components'; inspector.append(st);
+    for (const script of o.scripts) {
+      const card = document.createElement('div'); card.className = 'script-component';
+      const enabled = document.createElement('input'); enabled.type = 'checkbox'; enabled.checked = script.enabled; enabled.disabled = !!backup;
+      enabled.onchange = () => { script.enabled = enabled.checked; record(); refresh(); };
+      const lang = document.createElement('select');
+      for (const [value,label] of [['lua','Lua'],['c','C'],['cpp','C++'],['csharp','C#'],['java','Java']]) { const opt=document.createElement('option'); opt.value=value; opt.textContent=label; lang.append(opt); }
+      lang.value = script.language; lang.disabled = !!backup; lang.onchange=()=>{script.language=lang.value;record();refresh();};
+      const path = document.createElement('input'); path.type='text'; path.value=script.path; path.placeholder='Scripts/Player.lua'; path.disabled=!!backup;
+      path.onchange=()=>{script.path=path.value.trim().slice(0,240);record();refresh();};
+      const remove=document.createElement('button'); remove.textContent='×'; remove.disabled=!!backup; remove.onclick=()=>{o.scripts=o.scripts.filter(s=>s!==script);record();refresh();};
+      card.append(enabled,lang,path,remove); inspector.append(card);
+    }
+    const addScript=document.createElement('button'); addScript.textContent='+ Add Script'; addScript.disabled=!!backup;
+    addScript.onclick=()=>{o.scripts.push({id:crypto.randomUUID(),language:'lua',path:'Scripts/Main.lua',enabled:true});record();refresh();}; inspector.append(addScript);
     for (const [name, action] of [
       ['Fokus', () => viewport?.focus(o.id)],
       ['Duplikat', () => { const n = structuredClone(o); n.id = crypto.randomUUID(); n.name += ' Copy'; n.position.x += 1.5; scene.objects.push(n); selected = n.id; }],
@@ -99,18 +135,24 @@ function refresh() {
     }
   } else inspector.textContent = 'Pilih objek di viewport atau hierarchy.';
   $('name').value = scene.name; $('gravity').value = scene.gravity; $('sceneName').textContent = scene.name;
-  for (const id of ['box', 'sphere', 'cylinder', 'plane', 'cone', 'new', 'background', 'grid', 'snap', 'wireframe', 'shadows', 'exportGame', 'demo', 'save', 'export', 'import', 'name', 'gravity', 'mode']) $(id).disabled = !!backup;
+  for (const id of ['box', 'sphere', 'cylinder', 'plane', 'cone', 'torus', 'pointLight', 'directionalLight', 'new', 'background', 'grid', 'snap', 'wireframe', 'shadows', 'exportGame', 'demo', 'save', 'export', 'import', 'name', 'gravity', 'mode', 'ambientColor', 'ambientIntensity', 'sunColor', 'sunIntensity', 'exposure', 'fogEnabled', 'fogColor', 'fogNear', 'fogFar']) $(id).disabled = !!backup;
   $('background').value = scene.background ?? '#080808';
   $('grid').checked = scene.grid ?? true;
+  $('ambientColor').value = scene.environment.ambientColor; $('ambientIntensity').value = scene.environment.ambientIntensity;
+  $('sunColor').value = scene.environment.sunColor; $('sunIntensity').value = scene.environment.sunIntensity; $('exposure').value = scene.environment.exposure;
+  $('fogEnabled').checked = scene.environment.fogEnabled; $('fogColor').value = scene.environment.fogColor; $('fogNear').value = scene.environment.fogNear; $('fogFar').value = scene.environment.fogFar;
   refreshHistory();
   viewport?.sync(scene, selected, !!backup);
 }
-for (const kind of ['box', 'sphere', 'cylinder', 'plane', 'cone']) $(kind).onclick = () => { const o = createObject(kind); scene.objects.push(o); selected = o.id; record(); refresh(); };
+for (const kind of ['box', 'sphere', 'cylinder', 'plane', 'cone', 'torus', 'pointLight', 'directionalLight']) $(kind).onclick = () => { const o = createObject(kind); scene.objects.push(o); selected = o.id; record(); refresh(); };
 $('undo').onclick = () => restoreHistory('undo');
 $('redo').onclick = () => restoreHistory('redo');
 $('search').oninput = refresh;
 $('background').onchange = e => { scene.background = e.target.value; record(); refresh(); };
 $('grid').onchange = e => { scene.grid = e.target.checked; record(); refresh(); };
+for (const [id,key,type] of [['ambientColor','ambientColor','color'],['ambientIntensity','ambientIntensity','number'],['sunColor','sunColor','color'],['sunIntensity','sunIntensity','number'],['exposure','exposure','number'],['fogEnabled','fogEnabled','checkbox'],['fogColor','fogColor','color'],['fogNear','fogNear','number'],['fogFar','fogFar','number']]) {
+  $(id).onchange = e => { scene.environment[key] = type === 'checkbox' ? e.target.checked : type === 'number' ? Number(e.target.value) : e.target.value; record(); refresh(); };
+}
 $('snap').onchange = e => viewport?.setSnap(e.target.checked);
 $('cameraView').onchange = e => viewport?.setView(e.target.value);
 $('wireframe').onchange = e => viewport?.setWireframe(e.target.checked);
@@ -119,7 +161,7 @@ $('frameAll').onclick = () => viewport?.frameAll();
 $('focusSelection').onclick = () => viewport?.focus(selected);
 $('new').onclick = () => {
   if (!confirm('Buat scene kosong? Scene saat ini bisa dipulihkan dengan Undo.')) return;
-  scene = { version: 2, name: 'Untitled Scene', gravity: 9.81, background: '#080808', grid: true, objects: [] };
+  scene = createScene();
   selected = null; record(); refresh();
 };
 $('mode').onchange = e => viewport?.setMode(e.target.value);
@@ -188,3 +230,19 @@ projectPanel = createProjectPanel({
   }
 });
 refresh(); requestAnimationFrame(frame); showSplash();
+
+const toolchainNames = { lua:'Lua', c:'C', cpp:'C++', csharp:'C#', java:'Java' };
+$('scanToolchains').onclick = async () => {
+  const box = $('toolchainStatus');
+  if (!window.ravsDesktop?.scanToolchains) { box.textContent = 'Toolchain scan hanya tersedia pada aplikasi desktop.'; return; }
+  box.textContent = 'Memindai...';
+  const result = await window.ravsDesktop.scanToolchains();
+  if (!result.ok) { box.textContent = result.error; return; }
+  box.replaceChildren();
+  for (const item of result.data) {
+    const row = document.createElement('div'); row.className = 'toolchain-row';
+    const need = scene.objects.some(o => o.scripts?.some(s => s.enabled && s.language === item.language));
+    row.textContent = (item.available ? '✓ ' : '○ ') + toolchainNames[item.language] + ' · ' + (item.available ? item.version : 'belum terdeteksi') + (need ? ' · diperlukan scene' : '');
+    box.append(row);
+  }
+};
