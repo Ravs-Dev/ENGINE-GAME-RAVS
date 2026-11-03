@@ -22,8 +22,14 @@ try {
   assert.ok(!(await page.locator('#status').textContent()).includes('gagal'));
   assert.equal(await page.evaluate(() => typeof require), 'undefined');
   assert.equal(await page.evaluate(() => typeof process), 'undefined');
+  await page.waitForFunction(() => {
+    const canvas = document.querySelector('canvas');
+    if (!canvas) return false;
+    const gl = canvas.getContext('webgl2');
+    return !!gl && gl.drawingBufferWidth > 0 && gl.drawingBufferHeight > 0 && gl.getError() === gl.NO_ERROR;
+  }, null, { timeout: 10000 });
   assert.equal(await page.locator('canvas').evaluate(c => {
-    const gl = c.getContext('webgl2'); return !!gl && gl.getError() === gl.NO_ERROR;
+    const gl = c.getContext('webgl2'); return !!gl && gl.drawingBufferWidth > 0 && gl.getError() === gl.NO_ERROR;
   }), true);
   await page.locator('#box').click();
   assert.equal(await page.locator('#hierarchy button').count(), 4);
