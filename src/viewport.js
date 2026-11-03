@@ -1,109 +1,66 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { TransformControls } from 'three/addons/controls/TransformControls.js';
+import { MESH_KINDS, LIGHT_KINDS } from './scene.js';
+
+const geometryFor = kind =>
+  kind === 'sphere' ? new THREE.SphereGeometry(0.5,32,20) :
+  kind === 'cylinder' ? new THREE.CylinderGeometry(0.5,0.5,1,32) :
+  kind === 'plane' ? new THREE.PlaneGeometry(1,1) :
+  kind === 'cone' ? new THREE.ConeGeometry(0.5,1,32) :
+  kind === 'torus' ? new THREE.TorusGeometry(0.5,0.18,16,48) :
+  new THREE.BoxGeometry();
+
 export function createViewport(canvas, onSelect, onTransform, onTransformEnd) {
-  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
-  renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
-  renderer.shadowMap.enabled = true;
-  const world = new THREE.Scene();
-  world.background = new THREE.Color('#080808');
-  const camera = new THREE.PerspectiveCamera(50, 1, 0.1, 500);
-  camera.position.set(12, 10, 14);
-  const orbit = new OrbitControls(camera, canvas);
-  orbit.target.set(0, 1, 0); orbit.update();
-  world.add(new THREE.HemisphereLight(0xc9e4ff, 0x222222, 2));
-  const sun = new THREE.DirectionalLight(0xffffff, 3);
-  sun.position.set(5, 12, 7); sun.castShadow = true;
-  Object.assign(sun.shadow.camera, { left: -12, right: 12, top: 12, bottom: -12 });
-  sun.shadow.mapSize.set(1024, 1024); world.add(sun);
-  const grid = new THREE.GridHelper(40, 40, 0x657590, 0x303d52); grid.position.y = 0.01; world.add(grid);
-  world.add(new THREE.AxesHelper(2));
-  const group = new THREE.Group(); world.add(group);
-  const gizmo = new TransformControls(camera, canvas); world.add(gizmo.getHelper());
-  gizmo.addEventListener('dragging-changed', e => { orbit.enabled = !e.value; if (!e.value) onTransformEnd?.(); });
-  gizmo.addEventListener('objectChange', () => {
-    const m = gizmo.object;
-    if (m) onTransform(m.userData.id, m);
-  });
-  const outline = new THREE.BoxHelper(undefined, 0x00c8f5); outline.visible = false; world.add(outline);
-  const ray = new THREE.Raycaster(), pointer = new THREE.Vector2(); let down;
-  canvas.addEventListener('pointerdown', e => { down = { x: e.clientX, y: e.clientY, axis: gizmo.axis }; });
-  canvas.addEventListener('pointerup', e => {
-    if (!down || down.axis || gizmo.axis || e.button !== 0 || Math.hypot(e.clientX - down.x, e.clientY - down.y) > 4) return;
-    const rect = canvas.getBoundingClientRect();
-    pointer.set((e.clientX - rect.left) / rect.width * 2 - 1, -(e.clientY - rect.top) / rect.height * 2 + 1);
-    ray.setFromCamera(pointer, camera);
-    onSelect(ray.intersectObjects(group.children)[0]?.object.userData.id ?? null);
-  });
-  const meshes = new Map(); let wireframe = false; let shadows = true;
-  function sync(scene, selected, playing) {
-    world.background.set(scene.background ?? '#080808');
-    grid.visible = scene.grid ?? true;
-    for (const [id, m] of meshes) if (!scene.objects.some(o => o.id === id)) {
-      if (gizmo.object === m) gizmo.detach(); group.remove(m); m.geometry.dispose(); m.material.dispose(); meshes.delete(id);
+  const renderer = new THREE.WebGLRenderer({canvas,antialias:true});
+  renderer.setPixelRatio(Math.min(devicePixelRatio,2)); renderer.shadowMap.enabled=true;
+  renderer.outputColorSpace = THREE.SRGBColorSpace;
+  const world=new THREE.Scene(); world.background=new THREE.Color('#080808');
+  const camera=new THREE.PerspectiveCamera(50,1,0.1,2000); camera.position.set(12,10,14);
+  const orbit=new OrbitControls(camera,canvas); orbit.target.set(0,1,0); orbit.update();
+  const ambient=new THREE.HemisphereLight(0xc9e4ff,0x222222,2); world.add(ambient);
+  const sun=new THREE.DirectionalLight(0xffffff,3); sun.position.set(5,12,7); sun.castShadow=true; sun.shadow.mapSize.set(2048,2048); world.add(sun);
+  const grid=new THREE.GridHelper(40,40,0x657590,0x303d52); grid.position.y=.01; world.add(grid); world.add(new THREE.AxesHelper(2));
+  const group=new THREE.Group(); world.add(group);
+  const gizmo=new TransformControls(camera,canvas); world.add(gizmo.getHelper());
+  gizmo.addEventListener('dragging-changed',e=>{orbit.enabled=!e.value;if(!e.value)onTransformEnd?.();});
+  gizmo.addEventListener('objectChange',()=>{const m=gizmo.object;if(m)onTransform(m.userData.id,m);});
+  const outline=new THREE.BoxHelper(undefined,0x00c8f5); outline.visible=false; world.add(outline);
+  const ray=new THREE.Raycaster(),pointer=new THREE.Vector2();let down;
+  canvas.addEventListener('pointerdown',e=>{down={x:e.clientX,y:e.clientY,axis:gizmo.axis};});
+  canvas.addEventListener('pointerup',e=>{if(!down||down.axis||gizmo.axis||e.button!==0||Math.hypot(e.clientX-down.x,e.clientY-down.y)>4)return;const r=canvas.getBoundingClientRect();pointer.set((e.clientX-r.left)/r.width*2-1,-(e.clientY-r.top)/r.height*2+1);ray.setFromCamera(pointer,camera);const hit=ray.intersectObjects(group.children,true).find(h=>h.object.userData.id);onSelect(hit?.object.userData.id??null);});
+  const nodes=new Map();let wireframe=false,shadows=true;
+
+  function createNode(o){
+    let node;
+    if(MESH_KINDS.includes(o.kind)){
+      node=new THREE.Mesh(geometryFor(o.kind),new THREE.MeshStandardMaterial({side:THREE.DoubleSide}));
+    } else if(o.kind==='pointLight'){
+      node=new THREE.PointLight(o.light.color,o.light.intensity,o.light.distance,o.light.decay);
+      node.add(new THREE.PointLightHelper(node,.3));
+    } else {
+      node=new THREE.DirectionalLight(o.light.color,o.light.intensity);
+      node.add(new THREE.DirectionalLightHelper(node,.7));
     }
-    for (const o of scene.objects) {
-      let m = meshes.get(o.id);
-      if (!m) {
-        m = new THREE.Mesh(
-          o.kind === 'sphere' ? new THREE.SphereGeometry(0.5, 32, 20) :
-          o.kind === 'cylinder' ? new THREE.CylinderGeometry(0.5, 0.5, 1, 32) :
-          o.kind === 'plane' ? new THREE.PlaneGeometry(1, 1) :
-          o.kind === 'cone' ? new THREE.ConeGeometry(0.5, 1, 32) :
-          new THREE.BoxGeometry(),
-          new THREE.MeshStandardMaterial({ roughness: 0.65, side: THREE.DoubleSide })
-        );
-        m.userData.id = o.id; m.userData.kind = o.kind; m.castShadow = m.receiveShadow = true; meshes.set(o.id, m); group.add(m);
-      }
-      if (m.userData.kind !== o.kind) {
-        m.geometry.dispose();
-        m.geometry =
-          o.kind === 'sphere' ? new THREE.SphereGeometry(0.5, 32, 20) :
-          o.kind === 'cylinder' ? new THREE.CylinderGeometry(0.5, 0.5, 1, 32) :
-          o.kind === 'plane' ? new THREE.PlaneGeometry(1, 1) :
-          o.kind === 'cone' ? new THREE.ConeGeometry(0.5, 1, 32) :
-          new THREE.BoxGeometry();
-        m.userData.kind = o.kind;
-      }
-      m.position.set(o.position.x, o.position.y, o.position.z);
-      m.rotation.set(...['x', 'y', 'z'].map(a => THREE.MathUtils.degToRad(o.rotation[a])));
-      m.scale.set(o.scale.x, o.scale.y, o.scale.z); m.material.color.set(o.color); m.material.wireframe = wireframe;
+    node.userData.id=o.id;node.userData.kind=o.kind;nodes.set(o.id,node);group.add(node);return node;
+  }
+  function dispose(node){if(node.geometry)node.geometry.dispose();if(node.material)node.material.dispose();group.remove(node);}
+  function sync(scene,selected,playing){
+    const env=scene.environment;world.background.set(scene.background);grid.visible=scene.grid;
+    renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=env.exposure;
+    ambient.color.set(env.ambientColor);ambient.groundColor.set(env.ambientGroundColor);ambient.intensity=env.ambientIntensity;
+    sun.color.set(env.sunColor);sun.intensity=env.sunIntensity;
+    world.fog=env.fogEnabled?new THREE.Fog(env.fogColor,env.fogNear,env.fogFar):null;
+    for(const [id,n] of nodes)if(!scene.objects.some(o=>o.id===id)){if(gizmo.object===n)gizmo.detach();dispose(n);nodes.delete(id);}
+    for(const o of scene.objects){
+      let n=nodes.get(o.id);if(!n||n.userData.kind!==o.kind){if(n){dispose(n);nodes.delete(o.id);}n=createNode(o);}
+      n.visible=o.active;n.position.set(o.position.x,o.position.y,o.position.z);n.rotation.set(...['x','y','z'].map(a=>THREE.MathUtils.degToRad(o.rotation[a])));n.scale.set(o.scale.x,o.scale.y,o.scale.z);
+      if(MESH_KINDS.includes(o.kind)){n.material.color.set(o.color);n.material.roughness=o.material.roughness;n.material.metalness=o.material.metalness;n.material.emissive.set(o.material.emissive);n.material.emissiveIntensity=o.material.emissiveIntensity;n.material.wireframe=wireframe||o.material.wireframe;n.castShadow=shadows&&o.render.castShadow;n.receiveShadow=shadows&&o.render.receiveShadow;}
+      if(LIGHT_KINDS.includes(o.kind)){n.color.set(o.light.color);n.intensity=o.light.intensity;n.castShadow=shadows&&o.render.castShadow;if(o.kind==='pointLight'){n.distance=o.light.distance;n.decay=o.light.decay;}}
     }
-    const m = meshes.get(selected);
-    if (m && !playing) { if (gizmo.object !== m) gizmo.attach(m); outline.setFromObject(m); outline.visible = true; }
-    else { gizmo.detach(); outline.visible = false; }
+    const n=nodes.get(selected);if(n&&n.visible&&!playing){if(gizmo.object!==n)gizmo.attach(n);outline.setFromObject(n);outline.visible=true;}else{gizmo.detach();outline.visible=false;}
   }
-  function frameAll() {
-    if (!group.children.length) { orbit.target.set(0, 0, 0); camera.position.set(12, 10, 14); orbit.update(); return; }
-    const bounds = new THREE.Box3().setFromObject(group);
-    const center = bounds.getCenter(new THREE.Vector3());
-    const radius = Math.max(2, bounds.getSize(new THREE.Vector3()).length() * 0.7);
-    const direction = camera.position.clone().sub(orbit.target).normalize();
-    orbit.target.copy(center);
-    camera.position.copy(center).addScaledVector(direction, radius * 2);
-    camera.near = Math.max(0.01, radius / 1000);
-    camera.far = Math.max(500, radius * 20);
-    camera.updateProjectionMatrix();
-    orbit.update();
-  }
-  function setView(view) {
-    if (view === 'perspective') { camera.up.set(0, 1, 0); camera.position.copy(orbit.target).add(new THREE.Vector3(12, 10, 14)); orbit.update(); return; }
-    const directions = { front:[0,0,1],back:[0,0,-1],left:[-1,0,0],right:[1,0,0],top:[0,1,0],bottom:[0,-1,0] };
-    const d = directions[view];
-    if (!d) return;
-    const distance = Math.max(5, camera.position.distanceTo(orbit.target));
-    camera.up.set(0, view === 'top' || view === 'bottom' ? 0 : 1, view === 'top' ? -1 : view === 'bottom' ? 1 : 0);
-    camera.position.copy(orbit.target).addScaledVector(new THREE.Vector3(...d),distance);
-    orbit.update();
-  }
-  return { sync, frameAll, setView, setWireframe: enabled => { wireframe = !!enabled; }, setShadows: enabled => { shadows = !!enabled; renderer.shadowMap.enabled = shadows; for (const m of meshes.values()) m.castShadow = m.receiveShadow = shadows; }, setSnap: enabled => { gizmo.setTranslationSnap(enabled ? 0.5 : null); gizmo.setRotationSnap(enabled ? Math.PI / 12 : null); gizmo.setScaleSnap(enabled ? 0.25 : null); }, setMode: mode => gizmo.setMode(mode), focus(id) {
-    const m = meshes.get(id); if (!m) return;
-    orbit.target.copy(m.position); camera.position.copy(m.position).add(new THREE.Vector3(5, 4, 6)); orbit.update();
-  }, render() {
-    const w = Math.max(1, canvas.clientWidth), h = Math.max(1, canvas.clientHeight);
-    if (canvas.width !== Math.floor(w * renderer.getPixelRatio()) || canvas.height !== Math.floor(h * renderer.getPixelRatio())) {
-      renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix();
-    }
-    orbit.update(); renderer.render(world, camera);
-  } };
+  function frameAll(){const visible=[...nodes.values()].filter(n=>n.visible);if(!visible.length)return;const b=new THREE.Box3();visible.forEach(n=>b.expandByObject(n));const c=b.getCenter(new THREE.Vector3()),r=Math.max(2,b.getSize(new THREE.Vector3()).length()*.7),d=camera.position.clone().sub(orbit.target).normalize();orbit.target.copy(c);camera.position.copy(c).addScaledVector(d,r*2);camera.updateProjectionMatrix();orbit.update();}
+  function setView(view){if(view==='perspective'){camera.up.set(0,1,0);camera.position.copy(orbit.target).add(new THREE.Vector3(12,10,14));orbit.update();return;}const ds={front:[0,0,1],back:[0,0,-1],left:[-1,0,0],right:[1,0,0],top:[0,1,0],bottom:[0,-1,0]},d=ds[view];if(!d)return;const dist=Math.max(5,camera.position.distanceTo(orbit.target));camera.up.set(0,view==='top'||view==='bottom'?0:1,view==='top'?-1:view==='bottom'?1:0);camera.position.copy(orbit.target).addScaledVector(new THREE.Vector3(...d),dist);orbit.update();}
+  return {sync,frameAll,setView,setWireframe:v=>wireframe=!!v,setShadows:v=>{shadows=!!v;renderer.shadowMap.enabled=shadows;},setSnap:v=>{gizmo.setTranslationSnap(v?.5:null);gizmo.setRotationSnap(v?Math.PI/12:null);gizmo.setScaleSnap(v?.25:null);},setMode:m=>gizmo.setMode(m),focus(id){const n=nodes.get(id);if(!n)return;orbit.target.copy(n.position);camera.position.copy(n.position).add(new THREE.Vector3(5,4,6));orbit.update();},render(){const w=Math.max(1,canvas.clientWidth),h=Math.max(1,canvas.clientHeight);if(canvas.width!==Math.floor(w*renderer.getPixelRatio())||canvas.height!==Math.floor(h*renderer.getPixelRatio())){renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix();}orbit.update();renderer.render(world,camera);}};
 }

@@ -140,3 +140,29 @@ Tes desktop membuka Electron langsung melalui file lokal, memeriksa WebGL, isola
 
 Ini fondasi engine 3D, belum setara Unity. Fisika memakai ukuran box tanpa rotasi untuk landing vertikal terhadap objek statis; Sphere juga memakai collider box. Belum ada tumbukan samping, tumbukan antar-rigidbody, collider yang mengikuti rotasi, impor model/aset, scripting C#, audio, animasi, atau ekspor game sebagai executable terpisah. Installer berisi aplikasi editor 3D. Ekspor HTML tersedia untuk scene dan komponen bawaan; build game native serta eksekusi script pengguna belum tersedia. Server ditujukan untuk pengembangan, bukan deployment produksi.
 \n## Kamera dan navigasi editor (pembaruan)\n\nToolbar kamera menyediakan tampilan **Perspektif, Depan, Belakang, Kiri, Kanan, Atas, Bawah**. Tombol **Frame All** (shortcut `Home`) mengatur kamera agar seluruh objek terlihat, sedangkan **Fokus** (`F`) mengarah ke objek terpilih. Fitur ini hanya mengubah tampilan editor, bukan transformasi objek atau output game.\n
+
+## Editor Components & Multi-language scripting
+
+Branch pengembangan editor berikutnya menambahkan fondasi komponen bergaya game engine:
+
+- Primitive: Cube, Sphere, Cylinder, Plane, Cone, dan Torus.
+- Scene objects: Point Light dan Directional Light.
+- Material PBR: base color, roughness, metalness, emissive, emissive intensity, wireframe, cast/receive shadow.
+- Environment: ambient light, sun light, exposure, dan linear fog.
+- Object metadata: Active, Tag, dan Layer.
+- Script Component per object dengan pilihan **Lua, C, C++, C#, dan Java**.
+- Toolchain Manager desktop mendeteksi tool lokal yang tersedia: Lua, GCC/Clang/MSVC, .NET, dan Java.
+
+Script multi-language disimpan sebagai komponen proyek dan dapat menunjuk ke file di Project Files. Deteksi toolchain **tidak otomatis mengunduh atau menjalankan kode dari internet**. Kompilasi/runtime native perlu dijalankan melalui host desktop yang terisolasi pada tahap berikutnya; renderer browser tetap tidak memperoleh akses Node.js atau shell.
+
+### Target arsitektur script
+
+| Bahasa | Toolchain/Runtime |
+| --- | --- |
+| Lua | Lua runtime |
+| C | GCC / Clang / MSVC |
+| C++ | G++ / Clang++ / MSVC |
+| C# | .NET SDK |
+| Java | JDK/JRE |
+
+Dengan desain ini, ukuran installer editor tidak perlu membawa semua compiler. Pengguna memasang bahasa yang diperlukan untuk proyeknya, lalu Toolchain Manager mendeteksi ketersediaannya.
