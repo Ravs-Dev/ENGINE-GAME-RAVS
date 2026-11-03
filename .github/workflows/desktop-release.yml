@@ -1,6 +1,7 @@
 name: Desktop installers
 on:
   push:
+    branches: [main]
     tags: ['v*']
   pull_request:
   workflow_dispatch:
@@ -42,13 +43,15 @@ jobs:
             dist/*.exe
             dist/*.AppImage
             dist/*.deb
+
   release:
-    if: startsWith(github.ref, 'refs/tags/v')
+    if: startsWith(github.ref, 'refs/tags/v') || github.ref == 'refs/heads/main'
     needs: build
     runs-on: ubuntu-22.04
     permissions:
       contents: write
     steps:
+      - uses: actions/checkout@v5
       - uses: actions/download-artifact@v4
         with:
           path: installers
@@ -56,9 +59,28 @@ jobs:
       - name: Generate checksums
         working-directory: installers
         run: sha256sum *.exe *.AppImage *.deb > SHA256SUMS.txt
-      - name: Create downloadable release
+      - name: Resolve release version
+        id: version
+        shell: bash
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            echo "tag=$GITHUB_REF_NAME" >> "$GITHUB_OUTPUT"
+          else
+            echo "tag=v$(node -p "require('./package.json').version")" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Create downloadable public release
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
-          RELEASE_TAG: ${{ github.ref_name }}
-        run: gh release create "$RELEASE_TAG" installers/* --verify-tag --title "RAVS Engine 3D $RELEASE_TAG" --generate-notes
+          RELEASE_TAG: ${{ steps.version.outputs.tag }}
+        shell: bash
+        run: |
+          if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+            echo "Release $RELEASE_TAG already exists; no duplicate created."
+            exit 0
+          fi
+          gh release create "$RELEASE_TAG" installers/* \
+            --target "$GITHUB_SHA" \
+            --latest \
+            --title "RAVS Engine 3D $RELEASE_TAG" \
+            --generate-notes
