@@ -7,8 +7,22 @@ import { History } from './history.js';
 import { createViewport } from './viewport.js';
 const $ = id => document.getElementById(id);
 const keys = new Set(), storageKey = 'ravs.scene.3d.v2';
-let scene = demoScene(), selected = scene.objects[1].id, backup = null, last = 0;
-const status = text => $('status').textContent = text;
+let scene = demoScene(), selected = scene.objects[1].id, backup = null, last = 0, paused = false, stepOnce = false, activeView = 'scene';
+const consoleEntries = [];
+function pushConsole(text, level='log') {
+  consoleEntries.push({time:new Date().toLocaleTimeString(),text:String(text),level});
+  if (consoleEntries.length > 200) consoleEntries.shift();
+  const output = $('consoleOutput');
+  if (output) {
+    output.replaceChildren(...consoleEntries.map(entry => {
+      const line=document.createElement('div'); line.className='console-line '+entry.level;
+      const time=document.createElement('span'); time.className='console-time'; time.textContent=entry.time;
+      const message=document.createElement('span'); message.textContent=entry.text; line.append(time,message); return line;
+    }));
+    output.scrollTop=output.scrollHeight; $('consoleCount').textContent=consoleEntries.length;
+  }
+}
+const status = text => { $('status').textContent = text; pushConsole(text); };
 try { const saved = localStorage.getItem(storageKey); if (saved) scene = parseScene(saved); }
 catch { status('Data 3D lokal tidak valid. Demo dimuat.'); }
 const history = new History({ scene, selected });
@@ -164,7 +178,6 @@ $('new').onclick = () => {
   scene = createScene();
   selected = null; record(); refresh();
 };
-$('mode').onchange = e => viewport?.setMode(e.target.value);
 $('name').onchange = e => { scene.name = e.target.value; record(); refresh(); };
 $('gravity').onchange = e => { const n = Number(e.target.value); if (Number.isFinite(n)) scene.gravity = Math.max(0, Math.min(10000, n)); record(); refresh(); };
 $('save').onclick = () => { try { localStorage.setItem(storageKey, JSON.stringify(scene)); savedScene = JSON.stringify(scene); refreshHistory(); status('Scene 3D tersimpan lokal.'); } catch (e) { status(e.message); } };
@@ -177,11 +190,22 @@ $('import').onchange = async e => {
   catch (error) { status('Impor gagal: ' + error.message); } e.target.value = '';
 };
 $('demo').onclick = () => { if (confirm('Ganti scene aktif dengan demo 3D? Ekspor dahulu untuk backup.')) { scene = demoScene(); selected = scene.objects[1].id; record(); refresh(); } };
+function updatePlayUI() {
+  $('play').textContent = backup ? '■' : '▶'; $('play').classList.toggle('playing',!!backup);
+  $('pause').disabled = !backup; $('step').disabled = !backup; $('pause').classList.toggle('active',paused);
+  $('modeBadge').textContent = backup ? (paused ? 'Paused' : 'Play Mode') : 'Edit Mode';
+  $('gameTab').classList.toggle('active', activeView==='game'); $('sceneTab').classList.toggle('active',activeView==='scene');
+}
 $('play').onclick = () => {
-  if (backup) { scene = backup; backup = null; keys.clear(); hideSplash(); $('play').textContent = '▶ Play'; status('Edit mode'); }
-  else { backup = structuredClone(scene); $('play').textContent = '■ Stop'; $('canvas').focus(); status('Play mode · WASD / tombol panah'); showSplash(); }
-  refresh();
+  if (backup) { scene = backup; backup = null; paused=false; stepOnce=false; keys.clear(); hideSplash(); activeView='scene'; status('Edit mode'); }
+  else { backup = structuredClone(scene); paused=false; stepOnce=false; activeView='game'; $('canvas').focus(); status('Play mode · WASD / tombol panah'); showSplash(); }
+  updatePlayUI(); refresh();
 };
+$('pause').onclick = () => { if (!backup) return; paused=!paused; keys.clear(); status(paused?'Play mode dijeda.':'Play mode dilanjutkan.'); updatePlayUI(); };
+$('step').onclick = () => { if (!backup) return; paused=true; stepOnce=true; status('Step satu frame.'); updatePlayUI(); };
+$('sceneTab').onclick = () => { activeView='scene'; updatePlayUI(); status('Scene view aktif.'); };
+$('gameTab').onclick = () => { activeView='game'; updatePlayUI(); status(backup?'Game view aktif.':'Game view preview; tekan Play untuk menjalankan scene.'); };
+
 window.addEventListener('keydown', e => {
   const key = e.key.length === 1 ? e.key.toLowerCase() : e.key;
   const modifier = e.ctrlKey || e.metaKey;
@@ -217,7 +241,8 @@ window.addEventListener('beforeunload', event => {
 window.addEventListener('keyup', e => keys.delete(e.key.length === 1 ? e.key.toLowerCase() : e.key));
 window.addEventListener('blur', () => keys.clear());
 function frame(time) {
-  if (backup && !splashActive) step(scene, (time - last) / 1000, keys); last = time;
+  if (backup && !splashActive && (!paused || stepOnce)) { step(scene,(time-last)/1000,keys); stepOnce=false; }
+  last = time;
   viewport?.sync(scene, selected, !!backup); viewport?.render(); requestAnimationFrame(frame);
 }
 projectPanel = createProjectPanel({
@@ -229,7 +254,16 @@ projectPanel = createProjectPanel({
     $('gameTitle').value = splash.title; $('splashDuration').value = splash.duration; localStorage.setItem('ravs.splash.v1',JSON.stringify(splash));
   }
 });
-refresh(); requestAnimationFrame(frame); showSplash();
+for (const [id,mode] of [['toolMove','translate'],['toolRotate','rotate'],['toolScale','scale']]) {
+  $(id).onclick=()=>{ if(backup)return; $('mode').value=mode; viewport?.setMode(mode); for(const b of ['toolMove','toolRotate','toolScale','toolHand']) $(b).classList.toggle('active',b===id); status('Tool '+mode+' aktif.'); };
+}
+$('toolHand').onclick=()=>{ if(backup)return; for(const b of ['toolMove','toolRotate','toolScale','toolHand']) $(b).classList.toggle('active',b==='toolHand'); status('Hand/View tool aktif.'); };
+$('mode').onchange = e => { viewport?.setMode(e.target.value); const id={translate:'toolMove',rotate:'toolRotate',scale:'toolScale'}[e.target.value]; for(const b of ['toolMove','toolRotate','toolScale','toolHand']) $(b).classList.toggle('active',b===id); };
+$('projectTab').onclick=()=>{ $('projectView').hidden=false; $('consoleView').hidden=true; $('projectTab').classList.add('active'); $('consoleTab').classList.remove('active'); };
+$('consoleTab').onclick=()=>{ $('projectView').hidden=true; $('consoleView').hidden=false; $('consoleTab').classList.add('active'); $('projectTab').classList.remove('active'); };
+$('clearConsole').onclick=()=>{ consoleEntries.length=0; $('consoleOutput').replaceChildren(); $('consoleCount').textContent='0'; };
+document.querySelectorAll('.menu-item').forEach(button=>button.onclick=()=>status(button.textContent+' menu dipilih.'));
+updatePlayUI(); refresh(); requestAnimationFrame(frame); showSplash();
 
 const toolchainNames = { lua:'Lua', c:'C', cpp:'C++', csharp:'C#', java:'Java' };
 $('scanToolchains').onclick = async () => {
