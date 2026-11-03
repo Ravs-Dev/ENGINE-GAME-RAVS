@@ -5,6 +5,9 @@ test('3D renderer, transforms, persistence and Play/Stop', async ({ page }) => {
   await page.goto('/');
   await expect(page.locator('#hierarchy button')).toHaveCount(3);
   await expect(page.locator('#inspector')).toContainText('Position');
+  await expect(page.locator('.engine-menubar')).toContainText('GameObject');
+  await expect(page.locator('#toolMove')).toHaveClass(/active/);
+  await expect(page.locator('#sceneTab')).toHaveClass(/active/);
   await expect(page.locator('#status')).not.toContainText('gagal');
   const rendered = await page.locator('canvas').evaluate(canvas => {
     const gl = canvas.getContext('webgl2'); return !!gl && gl.drawingBufferWidth > 0 && gl.getError() === gl.NO_ERROR;
@@ -28,6 +31,11 @@ test('3D renderer, transforms, persistence and Play/Stop', async ({ page }) => {
   expect(saved.objects.at(-1).position.x).toBe(3);
   await page.locator('#hierarchy button').filter({ hasText: 'Player' }).click();
   await page.locator('#play').click();
+  await expect(page.locator('#gameTab')).toHaveClass(/active/);
+  await expect(page.locator('#pause')).toBeEnabled();
+  await page.locator('#pause').click(); await expect(page.locator('#modeBadge')).toHaveText('Paused');
+  await page.locator('#step').click();
+  await page.locator('#pause').click();
   await expect(page.locator('#box')).toBeDisabled();
   await page.keyboard.down('d'); await page.waitForTimeout(300); await page.keyboard.up('d');
   await page.locator('#play').click();

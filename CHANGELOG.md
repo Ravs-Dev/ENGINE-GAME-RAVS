@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.6.1
+
+- Redesign editor chrome to a Unity-inspired RAVS layout without copying Unity branding.
+- Add Q/W/E/R transform toolbar, Play/Pause/Step controls, Scene/Game tabs, and Edit/Play mode badge.
+- Add Project/Console tabs and in-editor event console.
+- Keep existing scene, project, inspector, export, and scripting/toolchain features compatible.
+
+
 ## 0.6.0
 
 - Add component-style object model with Active, Tag, Layer, PBR material, render settings, and Script Components.
