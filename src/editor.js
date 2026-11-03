@@ -262,7 +262,63 @@ $('mode').onchange = e => { viewport?.setMode(e.target.value); const id={transla
 $('projectTab').onclick=()=>{ $('projectView').hidden=false; $('consoleView').hidden=true; $('projectTab').classList.add('active'); $('consoleTab').classList.remove('active'); };
 $('consoleTab').onclick=()=>{ $('projectView').hidden=true; $('consoleView').hidden=false; $('consoleTab').classList.add('active'); $('projectTab').classList.remove('active'); };
 $('clearConsole').onclick=()=>{ consoleEntries.length=0; $('consoleOutput').replaceChildren(); $('consoleCount').textContent='0'; };
-document.querySelectorAll('.menu-item').forEach(button=>button.onclick=()=>status(button.textContent+' menu dipilih.'));
+const menuPopup = $('engineMenuPopup');
+function selectedObject() { return scene.objects.find(o=>o.id===selected); }
+function addObject(kind) {
+  if (backup) return;
+  const o=createObject(kind); scene.objects.push(o); selected=o.id; record(); refresh(); status(o.name+' dibuat.');
+}
+function addComponent(type) {
+  const o=selectedObject(); if (!o || backup) { status('Pilih GameObject terlebih dahulu.'); return; }
+  if (type==='rigidbody') o.body.enabled=true;
+  if (type==='controller') o.motion.enabled=true;
+  if (type==='script') o.scripts.push({id:crypto.randomUUID(),language:'lua',path:'Scripts/Main.lua',enabled:true});
+  record(); refresh(); status('Component '+type+' ditambahkan ke '+o.name+'.');
+}
+const menuDefinitions = {
+  file:[
+    ['New Scene',()=>$('new').click()],['Save Scene',()=>$('save').click()],['Export Scene JSON',()=>$('export').click()],
+    ['Import Scene…',()=>$('import').click()],['Export Game HTML',()=>$('exportGame').click()]
+  ],
+  edit:[
+    ['Undo',()=>$('undo').click()],['Redo',()=>$('redo').click()],
+    ['Duplicate',()=>[...$('inspector').querySelectorAll('button')].find(b=>b.textContent==='Duplikat')?.click()],
+    ['Delete',()=>[...$('inspector').querySelectorAll('button')].find(b=>b.textContent==='Hapus')?.click()]
+  ],
+  assets:[
+    ['Open Project Folder…',()=>$('openProject').click()],['Refresh Project',()=>$('refreshFiles').click()],
+    ['Create Folder',()=>{ $('projectTab').click(); $('entryName').focus(); status('Isi nama lalu tekan + Folder.'); }],
+    ['Create File',()=>{ $('projectTab').click(); $('entryName').focus(); status('Isi nama lalu tekan + File.'); }]
+  ],
+  gameObject:[
+    ['Cube',()=>addObject('box')],['Sphere',()=>addObject('sphere')],['Cylinder',()=>addObject('cylinder')],
+    ['Plane',()=>addObject('plane')],['Cone',()=>addObject('cone')],['Torus',()=>addObject('torus')],
+    ['Point Light',()=>addObject('pointLight')],['Directional Light',()=>addObject('directionalLight')]
+  ],
+  component:[
+    ['Rigidbody',()=>addComponent('rigidbody')],['Controller',()=>addComponent('controller')],['Script',()=>addComponent('script')]
+  ],
+  window:[
+    ['Project',()=>$('projectTab').click()],['Console',()=>$('consoleTab').click()],
+    ['Toolchain Manager',()=>{ $('scanToolchains').scrollIntoView({behavior:'smooth',block:'center'}); status('Toolchain Manager ditampilkan.'); }]
+  ],
+  help:[
+    ['About RAVS Engine',()=>status('RAVS Engine 3D v0.6.1 · editor game 3D desktop.')],
+    ['Controls',()=>status('Q View · W Move · E Rotate · R Scale · F Focus · Ctrl+S Save · Ctrl+D Duplicate')]
+  ]
+};
+function closeMenu(){ menuPopup.hidden=true; menuPopup.replaceChildren(); }
+function openMenu(button,key){
+  const items=menuDefinitions[key]??[]; menuPopup.replaceChildren();
+  for(const [label,action] of items){
+    const item=document.createElement('button'); item.textContent=label;
+    item.onclick=()=>{closeMenu();action();}; menuPopup.append(item);
+  }
+  const rect=button.getBoundingClientRect(); menuPopup.style.left=rect.left+'px'; menuPopup.style.top=rect.bottom+'px'; menuPopup.hidden=false;
+}
+document.querySelectorAll('.menu-item').forEach(button=>button.onclick=e=>{e.stopPropagation();if(!menuPopup.hidden&&menuPopup.dataset.menu===button.dataset.menu){closeMenu();return;}menuPopup.dataset.menu=button.dataset.menu;openMenu(button,button.dataset.menu);});
+document.addEventListener('pointerdown',e=>{if(!menuPopup.hidden&&!menuPopup.contains(e.target)&&!e.target.classList.contains('menu-item'))closeMenu();});
+$('hierarchyCreate').onclick=e=>{ const source=document.querySelector('[data-menu="gameObject"]'); openMenu(source,'gameObject'); menuPopup.style.left=e.currentTarget.getBoundingClientRect().left+'px'; menuPopup.style.top=e.currentTarget.getBoundingClientRect().bottom+'px'; };
 updatePlayUI(); refresh(); requestAnimationFrame(frame); showSplash();
 
 const toolchainNames = { lua:'Lua', c:'C', cpp:'C++', csharp:'C#', java:'Java' };
