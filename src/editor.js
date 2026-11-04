@@ -2,7 +2,7 @@ import logo from '../assets/ravs-logo.png';
 import { createProjectPanel } from './project-panel.js';
 import { createGameHTML, validateSplash } from './game-export.js';
 import { download } from './project.js';
-import { createObject, createScene, createHumanoidRig, createAnimationController, demoScene, parseScene, step, LIGHT_KINDS } from './scene.js';
+import { createObject, createScene, createHumanoidRig, createAnimationController, demoScene, parseScene, step, LIGHT_KINDS, CAMERA_KINDS } from './scene.js';
 import { History } from './history.js';
 import { createViewport } from './viewport.js';
 import { FEATURE_PACKS, readPackState, writePackState, isPackReady } from './feature-packs.js';
@@ -172,6 +172,13 @@ function refresh() {
         field(inspector, 'Distance', o.light, 'distance', 'number', 0, 10000);
         field(inspector, 'Decay', o.light, 'decay', 'number', 0, 10);
       }
+    } else if (CAMERA_KINDS.includes(o.kind)) {
+      const ct=document.createElement('h2');ct.textContent='Camera';inspector.append(ct);
+      field(inspector,'Main Camera',o.camera,'primary','checkbox');
+      field(inspector,'Field of View',o.camera,'fov','number',10,170);
+      field(inspector,'Near Clip',o.camera,'near','number',0.01,1000);
+      field(inspector,'Far Clip',o.camera,'far','number',0.02,10000);
+      const makeMain=document.createElement('button');makeMain.textContent='Set as Main Camera';makeMain.disabled=!!backup;makeMain.onclick=()=>{for(const item of scene.objects)if(CAMERA_KINDS.includes(item.kind))item.camera.primary=item===o;record();refresh();status(o.name+' menjadi Main Camera.');};inspector.append(makeMain);
     } else {
       const mt = document.createElement('h2'); mt.textContent = 'Material PBR'; inspector.append(mt);
       field(inspector, 'Roughness', o.material, 'roughness', 'number', 0, 1);
@@ -186,7 +193,7 @@ function refresh() {
     field(inspector, 'Bounce', o.body, 'bounce', 'number', 0, 1);
     field(inspector, 'Controller', o.motion, 'enabled', 'checkbox');
     field(inspector, 'Kecepatan', o.motion, 'speed', 'number', 0, 100);
-    if (!LIGHT_KINDS.includes(o.kind)) {
+    if (!LIGHT_KINDS.includes(o.kind) && !CAMERA_KINDS.includes(o.kind)) {
       const rt=document.createElement('h2'); rt.textContent='Rig / Armature'; inspector.append(rt);
       if (!o.rig) {
         const addRig=document.createElement('button'); addRig.textContent='+ Humanoid Rig';
@@ -232,7 +239,7 @@ function refresh() {
     }
   } else inspector.textContent = 'Pilih objek di viewport atau hierarchy.';
   $('name').value = scene.name; $('gravity').value = scene.gravity; $('sceneName').textContent = scene.name;
-  for (const id of ['box', 'sphere', 'cylinder', 'plane', 'cone', 'torus', 'pointLight', 'directionalLight', 'new', 'background', 'grid', 'snap', 'wireframe', 'shadows', 'exportGame', 'demo', 'save', 'export', 'import', 'name', 'gravity', 'mode', 'ambientColor', 'ambientIntensity', 'sunColor', 'sunIntensity', 'exposure', 'fogEnabled', 'fogColor', 'fogNear', 'fogFar']) $(id).disabled = !!backup;
+  for (const id of ['box', 'sphere', 'cylinder', 'plane', 'cone', 'torus', 'pointLight', 'directionalLight', 'cameraActor', 'new', 'background', 'grid', 'snap', 'wireframe', 'shadows', 'exportGame', 'demo', 'save', 'export', 'import', 'name', 'gravity', 'mode', 'ambientColor', 'ambientIntensity', 'sunColor', 'sunIntensity', 'exposure', 'fogEnabled', 'fogColor', 'fogNear', 'fogFar']) $(id).disabled = !!backup;
   $('background').value = scene.background ?? '#080808';
   $('grid').checked = scene.grid ?? true;
   $('ambientColor').value = scene.environment.ambientColor; $('ambientIntensity').value = scene.environment.ambientIntensity;
@@ -242,6 +249,7 @@ function refresh() {
   viewport?.sync(scene, selected, !!backup);
 }
 for (const kind of ['box', 'sphere', 'cylinder', 'plane', 'cone', 'torus', 'pointLight', 'directionalLight']) $(kind).onclick = () => { const o = createObject(kind); scene.objects.push(o); selected = o.id; record(); refresh(); };
+$('cameraActor').onclick=()=>{const o=createObject('camera');const already=scene.objects.some(x=>CAMERA_KINDS.includes(x.kind));if(already)o.camera.primary=false;o.position={x:0,y:3,z:6};scene.objects.push(o);selected=o.id;record();refresh();status('Camera Actor ditambahkan.');};
 $('undo').onclick = () => restoreHistory('undo');
 $('redo').onclick = () => restoreHistory('redo');
 $('search').oninput = refresh;
