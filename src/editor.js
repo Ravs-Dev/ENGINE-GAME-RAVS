@@ -499,18 +499,21 @@ const menuDefinitions = {
   ],
   assets:[
     ['Open Project Folder…',()=>$('openProject').click()],['Refresh Project',()=>$('refreshFiles').click()],
+    ['Import OBJ Model…',()=>{setWorkspace('modeling');$('modelImportObj').click();}],
+    ['Feature Pack Manager',()=>{setWorkspace('build');$('packManagerPanel').scrollIntoView({behavior:'smooth',block:'start'});}],
     ['Create Folder',()=>{ $('projectTab').click(); $('entryName').focus(); status('Isi nama lalu tekan + Folder.'); }],
     ['Create File',()=>{ $('projectTab').click(); $('entryName').focus(); status('Isi nama lalu tekan + File.'); }]
   ],
   gameObject:[
     ['Cube',()=>addObject('box')],['Sphere',()=>addObject('sphere')],['Cylinder',()=>addObject('cylinder')],
     ['Plane',()=>addObject('plane')],['Cone',()=>addObject('cone')],['Torus',()=>addObject('torus')],
-    ['Point Light',()=>addObject('pointLight')],['Directional Light',()=>addObject('directionalLight')]
+    ['Point Light',()=>addObject('pointLight')],['Directional Light',()=>addObject('directionalLight')],['Camera',()=>$('cameraActor').click()]
   ],
   component:[
     ['Rigidbody',()=>addComponent('rigidbody')],['Controller',()=>addComponent('controller')],['Script',()=>addComponent('script')]
   ],
   window:[
+    ['Level Workspace',()=>setWorkspace('level')],['Modeling Workspace',()=>setWorkspace('modeling')],['Animation Workspace',()=>setWorkspace('animation')],['Build Workspace',()=>setWorkspace('build')],
     ['Content Browser',()=>$('projectTab').click()],['Output Log',()=>$('consoleTab').click()],
     ['Toggle World Outliner',()=>setPanelCollapsed('left',!editorLayout.outlinerCollapsed)],
     ['Toggle Details',()=>setPanelCollapsed('right',!editorLayout.detailsCollapsed)],
@@ -518,7 +521,7 @@ const menuDefinitions = {
     ['Toolchain Manager',()=>{ $('scanToolchains').scrollIntoView({behavior:'smooth',block:'center'}); status('Toolchain Manager ditampilkan.'); }]
   ],
   help:[
-    ['About RAVS Engine',()=>status('RAVS Engine 3D v0.8.0 · resizable desktop workspace.')],
+    ['About RAVS Engine',()=>status('RAVS Engine 3D v1.0.0 · modeling, camera, OBJ assets, feature packs and desktop workspace.')],
     ['Controls',()=>status('Q View · W Move · E Rotate · R Scale · F Focus · Ctrl+S Save · Ctrl+D Duplicate')]
   ]
 };
