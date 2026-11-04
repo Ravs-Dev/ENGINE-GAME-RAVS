@@ -31,6 +31,10 @@ try {
   assert.equal(await page.locator('canvas').evaluate(c => {
     const gl = c.getContext('webgl2'); return !!gl && gl.drawingBufferWidth > 0 && gl.getError() === gl.NO_ERROR;
   }), true);
+  const packList = await page.evaluate(async () => window.ravsDesktop?.listPacks ? window.ravsDesktop.listPacks() : null);
+  assert.equal(packList?.ok, true);
+  assert.ok(Array.isArray(packList.data));
+
   await page.locator('#box').click();
   assert.equal(await page.locator('#hierarchy button').count(), 4);
   await app.evaluate(({ Menu }) => Menu.getApplicationMenu().items.find(i => i.label === 'Edit').submenu.items.find(i => i.label === 'Undo').click());
