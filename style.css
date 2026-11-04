@@ -24,3 +24,63 @@ main{grid-template-columns:250px minmax(420px,1fr) 300px}.viewport{background:#1
 /* v0.7 Unreal-inspired level editor workflow */
 main{grid-template-columns:285px minmax(480px,1fr) 330px}.viewport{position:relative;background:#11161b}.panel-title-row h2,main>aside:last-child>h2:first-child{color:#c9d5e5;font-weight:700;letter-spacing:.8px}.unreal-viewport-toolbar{display:flex;align-items:center;gap:5px;flex-wrap:wrap;padding:5px 6px;margin-bottom:5px;background:#1a222a;border:1px solid #303b45;border-radius:3px}.unreal-viewport-toolbar select,.unreal-viewport-toolbar button{font-size:11px;padding:5px 7px;background:#212b34;border-color:#3b4853}.compact-check{display:flex!important;gap:5px!important;margin:0!important;padding:3px 6px;background:#212b34;border:1px solid #3b4853;border-radius:3px}.canvas-shell{position:relative;flex:1;min-height:0}.canvas-shell canvas{height:100%!important}.viewport-stats{position:absolute;right:10px;top:10px;pointer-events:none;background:#101820cc;border:1px solid #34414c;border-radius:3px;padding:4px 7px;color:#a9d7e5;font:11px ui-monospace,Consolas,monospace}.play-toolbar #simulate.active{background:#a06b12;border-color:#dca52f}.project-workspace.drawer-collapsed{display:none}.engine-dockbar{position:sticky;bottom:0;z-index:60;height:34px;display:flex;align-items:center;gap:6px;padding:4px 10px;background:#161c22;border-top:1px solid #34404b}.engine-dockbar button{padding:5px 12px;font-size:11px;background:#202a33;border-color:#3a4854}.engine-dockbar #dockStatus{margin-left:auto;color:#7f93a7;font-size:11px}.project-browser h2{color:#c9d5e5}.project-workspace{border-top:2px solid #34414c}.code-editor,.project-browser{background:#151b20}.engine-menubar,header{background:#1b2229}.engine-menubar{border-bottom-color:#3a4650}.viewbar{background:#151c22;padding-top:3px}.editor-tabs button.active{background:#214a5b}.search input{background:#151a1f}
 @media(min-width:851px){main{height:64vh}.project-workspace{height:calc(36vh - 96px);min-height:240px}.viewport canvas{min-height:180px}}
+
+/* v0.8 resizable/dockable-style workspace */
+:root{--ravs-outliner-width:285px;--ravs-details-width:330px;--ravs-content-height:320px}
+#levelEditorLayout{grid-template-columns:var(--ravs-outliner-width) 6px minmax(360px,1fr) 6px var(--ravs-details-width);column-gap:0}
+#outlinerPanel,#detailsPanel{min-width:0}
+.workspace-splitter{position:relative;z-index:20;background:#202a32;transition:background .12s ease;touch-action:none;outline:none}
+.workspace-splitter::after{content:"";position:absolute;background:#526575;border-radius:999px;opacity:.55}
+.workspace-splitter.vertical{width:6px;cursor:col-resize;border-left:1px solid #10161b;border-right:1px solid #10161b}
+.workspace-splitter.vertical::after{width:2px;height:44px;left:1px;top:50%;transform:translateY(-50%)}
+.workspace-splitter.horizontal{height:7px;cursor:row-resize;border-top:1px solid #10161b;border-bottom:1px solid #10161b}
+.workspace-splitter.horizontal::after{height:2px;width:54px;top:1px;left:50%;transform:translateX(-50%)}
+.workspace-splitter:hover,.workspace-splitter:focus,.workspace-splitter.dragging{background:#0b7895}
+.workspace-splitter:hover::after,.workspace-splitter:focus::after,.workspace-splitter.dragging::after{background:#bcefff;opacity:1}
+body.layout-resizing{user-select:none}
+body.layout-resizing.vertical-resize{cursor:col-resize}
+body.layout-resizing.horizontal-resize{cursor:row-resize}
+.panel-title-actions{display:flex;align-items:center;gap:4px}
+.panel-mini{width:25px;height:24px;padding:0;border-radius:3px;font-size:16px;line-height:18px}
+#contentWorkspace{height:var(--ravs-content-height);min-height:180px;max-height:620px}
+#contentWorkspace.drawer-collapsed{display:none}
+#bottomSplitter.drawer-collapsed{display:none}
+#levelEditorLayout.outliner-collapsed{--ravs-outliner-width:0px}
+#levelEditorLayout.details-collapsed{--ravs-details-width:0px}
+#levelEditorLayout.outliner-collapsed #outlinerPanel,#levelEditorLayout.details-collapsed #detailsPanel{display:none}
+#leftSplitter.collapsed-edge::before,#rightSplitter.collapsed-edge::before{position:absolute;top:10px;z-index:2;background:#0b7895;color:#fff;border-radius:3px;padding:3px 2px;font-size:10px}
+#leftSplitter.collapsed-edge::before{content:"›";left:0}
+#rightSplitter.collapsed-edge::before{content:"‹";right:0}
+.engine-dockbar #resetLayout{border-color:#49606e}
+@media(max-width:850px){
+  #levelEditorLayout{grid-template-columns:1fr!important}
+  #leftSplitter,#rightSplitter,#bottomSplitter{display:none!important}
+  #levelEditorLayout #outlinerPanel,#levelEditorLayout #detailsPanel{display:block!important}
+  #contentWorkspace{height:auto!important;max-height:none}
+}
+
+/* v0.8 advanced workspace resizing */
+:root{--ravs-content-left:320px;--ravs-toolchain-height:112px}
+#contentWorkspace{grid-template-columns:var(--ravs-content-left) 6px minmax(0,1fr)}
+#contentSplitter{height:auto;width:6px}
+#toolchainPanel{height:var(--ravs-toolchain-height);min-height:72px;max-height:280px;overflow:auto}
+#toolchainSplitter{display:block}
+#toolchainPanel.collapsed-panel{display:none}
+#toolchainSplitter.collapsed-edge::before{content:"⌃";position:absolute;left:50%;top:-2px;transform:translateX(-50%);background:#0b7895;color:#fff;border-radius:3px;padding:1px 8px;font-size:10px}
+#levelEditorLayout.viewport-maximized{grid-template-columns:0 0 minmax(0,1fr) 0 0}
+#levelEditorLayout.viewport-maximized #outlinerPanel,
+#levelEditorLayout.viewport-maximized #detailsPanel,
+#levelEditorLayout.viewport-maximized #leftSplitter,
+#levelEditorLayout.viewport-maximized #rightSplitter{display:none}
+body.viewport-maximized #toolchainPanel,
+body.viewport-maximized #toolchainSplitter,
+body.viewport-maximized #contentWorkspace,
+body.viewport-maximized #bottomSplitter{display:none!important}
+body.viewport-maximized #levelEditorLayout{height:calc(100vh - 110px);min-height:520px}
+#maximizeViewport.active{background:#0b7895;border-color:#36c9ee}
+.dock-layout-label{display:flex;align-items:center;gap:6px;margin:0;color:#90a5b7;font-size:11px}.dock-layout-label select{padding:4px 7px;font-size:11px}
+@media(max-width:850px){
+ #contentWorkspace{grid-template-columns:1fr!important}
+ #contentSplitter,#toolchainSplitter{display:none!important}
+ #toolchainPanel{height:auto!important;max-height:none}
+}
