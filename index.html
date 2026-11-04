@@ -101,14 +101,15 @@
       <p>Rigidbody: gravitasi dan tumbukan vertikal terhadap objek statis. Controller: gerakan pada sumbu X/Z saat Play.</p>
     </aside>
   </main>
-  <section class="toolchain-panel" aria-label="Toolchain bahasa pemrograman">
-    <div><h2>Toolchain Manager</h2><p>Deteksi runtime/compiler lokal untuk Script Component. Instalasi toolchain dilakukan oleh pengguna dari penyedia resminya.</p></div>
+  <div id="toolchainSplitter" class="workspace-splitter horizontal" role="separator" tabindex="0" aria-label="Resize Toolchain Manager" aria-orientation="horizontal" aria-valuemin="72" aria-valuemax="280" aria-valuenow="112"></div>
+  <section id="toolchainPanel" class="toolchain-panel" aria-label="Toolchain bahasa pemrograman">
+    <div><div class="panel-title-row"><h2>Toolchain Manager</h2><button id="collapseToolchain" class="panel-mini" title="Collapse Toolchain Manager">⌄</button></div><p>Deteksi runtime/compiler lokal untuk Script Component. Instalasi toolchain dilakukan oleh pengguna dari penyedia resminya.</p></div>
     <button id="scanToolchains">Scan Toolchains</button>
     <div id="toolchainStatus" class="toolchain-status">Belum dipindai.</div>
   </section>
   <div id="bottomSplitter" class="workspace-splitter horizontal" role="separator" tabindex="0" aria-label="Resize Content Browser" aria-orientation="horizontal" aria-valuemin="180" aria-valuemax="620" aria-valuenow="320"></div>
   <section id="contentWorkspace" class="project-workspace" aria-label="File dan script proyek">
-    <aside class="project-browser">
+    <aside id="projectBrowserPanel" class="project-browser">
       <h2>Content Browser</h2><p id="projectTitle"></p>
       <div class="file-actions"><button id="openProject">Buka Folder Disk</button><button id="refreshFiles">Refresh</button></div>
       <label>Nama baru<input id="entryName" placeholder="Main.js atau Scripts" maxlength="120"></label>
@@ -116,6 +117,7 @@
       <p id="fileFolder"></p><div id="fileTree" role="navigation" aria-label="Daftar file"></div>
       <div class="file-actions"><button id="exportProject">Ekspor Proyek</button><label class="button">Impor Proyek<input id="importProject" type="file" accept=".json" hidden></label></div>
     </aside>
+    <div id="contentSplitter" class="workspace-splitter vertical" role="separator" tabindex="0" aria-label="Resize Content Browser file tree" aria-orientation="vertical" aria-valuemin="220" aria-valuemax="620" aria-valuenow="320"></div>
     <section class="code-editor">
       <div class="bottom-tabs"><button id="projectTab" class="active">Project</button><button id="consoleTab">Console <span id="consoleCount">0</span></button></div>
       <div id="projectView">
@@ -129,7 +131,7 @@
       </div>
     </section>
   </section>
-  <div class="engine-dockbar"><button id="contentDrawer">Content Drawer</button><button id="outputLog">Output Log</button><button id="resetLayout">Reset Layout</button><span id="dockStatus">RAVS Engine 3D · Level Editor</span></div>
+  <div class="engine-dockbar"><button id="contentDrawer">Content Drawer</button><button id="outputLog">Output Log</button><button id="maximizeViewport">Maximize Viewport</button><label class="dock-layout-label">Layout <select id="layoutPreset"><option value="custom">Custom</option><option value="level">Level Editing</option><option value="scripting">Scripting</option><option value="cinematic">Cinematic</option></select></label><button id="resetLayout">Reset Layout</button><span id="dockStatus">RAVS Engine 3D · Level Editor</span></div>
   <div id="splashOverlay" class="splash-overlay" hidden>
     <img id="splashLogo" alt="Logo Ravs"><h1>Ravs</h1><p id="splashTitle"></p><progress id="splashProgress" max="1" value="0"></progress><p>Powered by Ravs</p><button id="closeSplash">Lewati</button>
   </div>
