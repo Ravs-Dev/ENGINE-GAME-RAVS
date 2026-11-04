@@ -135,11 +135,15 @@
     </aside>
     <div id="contentSplitter" class="workspace-splitter vertical" role="separator" tabindex="0" aria-label="Resize Content Browser file tree" aria-orientation="vertical" aria-valuemin="220" aria-valuemax="620" aria-valuenow="320"></div>
     <section class="code-editor">
-      <div class="bottom-tabs"><button id="projectTab" class="active">Project</button><button id="consoleTab">Console <span id="consoleCount">0</span></button></div>
+      <div class="bottom-tabs"><button id="projectTab" class="active">Project</button><button id="assetLibraryTab">Assets</button><button id="consoleTab">Console <span id="consoleCount">0</span></button></div>
       <div id="projectView">
         <div class="code-toolbar"><strong id="filePath">Pilih file teks atau script</strong><button id="saveFile">Simpan File</button></div>
         <textarea id="code" aria-label="Editor isi file" spellcheck="false" disabled placeholder="Pilih file dari Project Files, atau buat file baru."></textarea>
         <p>File teks UTF-8 maksimal 1 MB. Script bisa diedit dan disimpan; eksekusi script game belum tersedia. Ctrl+S menyimpan file aktif.</p>
+      </div>
+      <div id="assetLibraryView" hidden>
+        <div class="asset-library-toolbar"><strong>Reusable Assets</strong><span>Prefab & Material Presets</span></div>
+        <div class="asset-library-grid"><section><h3>Prefabs</h3><div id="prefabList"></div></section><section><h3>Materials</h3><div id="materialPresetList"></div></section></div>
       </div>
       <div id="consoleView" hidden>
         <div class="console-toolbar"><strong>Console</strong><button id="clearConsole">Clear</button></div>
