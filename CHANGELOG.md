@@ -9,6 +9,7 @@
 - Add Animation Controller metadata with clips, autoplay, loop and speed fields.
 - Add .ravspack manifest import/registration and feature pack readiness states.
 - Keep heavy engine data separate from the core editor installer.
+- Block game export when a required feature pack is missing; engine packs become ready only after a .ravspack manifest is imported.
 
 
 ## 0.8.0
