@@ -20,7 +20,38 @@ export function defaultEnvironment() {
 }
 
 export function createScene(name = 'Untitled Scene') {
-  return { version: 2, name, gravity: 9.81, background: '#080808', grid: true, environment: defaultEnvironment(), objects: [] };
+  return { version: 2, name, gravity: 9.81, background: '#080808', grid: true, environment: defaultEnvironment(), requiredPacks: [], objects: [] };
+}
+
+export function createHumanoidRig() {
+  const bone = (name,parent,position) => ({ id: crypto.randomUUID(), name, parent, position, rotation:{x:0,y:0,z:0}, scale:{x:1,y:1,z:1} });
+  const bones = [];
+  const root=bone('Root',null,{x:0,y:0,z:0}); bones.push(root);
+  const hips=bone('Hips',root.id,{x:0,y:0.9,z:0}); bones.push(hips);
+  const spine=bone('Spine',hips.id,{x:0,y:0.35,z:0}); bones.push(spine);
+  const chest=bone('Chest',spine.id,{x:0,y:0.35,z:0}); bones.push(chest);
+  const neck=bone('Neck',chest.id,{x:0,y:0.28,z:0}); bones.push(neck);
+  const head=bone('Head',neck.id,{x:0,y:0.25,z:0}); bones.push(head);
+  const lua=bone('LeftUpperArm',chest.id,{x:-0.32,y:0.22,z:0}); bones.push(lua);
+  const lla=bone('LeftLowerArm',lua.id,{x:-0.38,y:0,z:0}); bones.push(lla);
+  bones.push(bone('LeftHand',lla.id,{x:-0.32,y:0,z:0}));
+  const rua=bone('RightUpperArm',chest.id,{x:0.32,y:0.22,z:0}); bones.push(rua);
+  const rla=bone('RightLowerArm',rua.id,{x:0.38,y:0,z:0}); bones.push(rla);
+  bones.push(bone('RightHand',rla.id,{x:0.32,y:0,z:0}));
+  const lul=bone('LeftUpperLeg',hips.id,{x:-0.17,y:-0.42,z:0}); bones.push(lul);
+  const lll=bone('LeftLowerLeg',lul.id,{x:0,y:-0.48,z:0}); bones.push(lll);
+  bones.push(bone('LeftFoot',lll.id,{x:0,y:-0.42,z:0.12}));
+  const rul=bone('RightUpperLeg',hips.id,{x:0.17,y:-0.42,z:0}); bones.push(rul);
+  const rll=bone('RightLowerLeg',rul.id,{x:0,y:-0.48,z:0}); bones.push(rll);
+  bones.push(bone('RightFoot',rll.id,{x:0,y:-0.42,z:0.12}));
+  return { enabled:true, type:'humanoid', rootBone:root.id, bones };
+}
+
+export function createAnimationController() {
+  return { enabled:true, autoplay:true, defaultClip:'Idle', clips:[
+    { id:crypto.randomUUID(), name:'Idle', path:'Animations/Idle.anim', loop:true, speed:1 },
+    { id:crypto.randomUUID(), name:'Walk', path:'Animations/Walk.anim', loop:true, speed:1 }
+  ] };
 }
 
 export function createObject(kind = 'box', id = crypto.randomUUID()) {
@@ -34,7 +65,9 @@ export function createObject(kind = 'box', id = crypto.randomUUID()) {
     render: { castShadow: true, receiveShadow: true },
     body: { enabled: false, vy: 0, bounce: 0.3 },
     motion: { enabled: false, speed: 4 },
-    scripts: []
+    scripts: [],
+    rig: null,
+    animation: null
   };
   if (LIGHT_KINDS.includes(kind)) object.light = { color: '#ffffff', intensity: kind === 'pointLight' ? 4 : 3, distance: kind === 'pointLight' ? 20 : 0, decay: 2 };
   return object;
@@ -56,6 +89,7 @@ function applyDefaults(s) {
   s.background ??= '#080808';
   s.grid ??= true;
   s.environment = { ...defaultEnvironment(), ...(s.environment ?? {}) };
+  s.requiredPacks ??= [];
   for (const o of s.objects ?? []) {
     o.active ??= true;
     o.tag ??= 'Untagged';
@@ -63,6 +97,8 @@ function applyDefaults(s) {
     o.material = { roughness: 0.65, metalness: 0, emissive: '#000000', emissiveIntensity: 0, wireframe: false, ...(o.material ?? {}) };
     o.render = { castShadow: true, receiveShadow: true, ...(o.render ?? {}) };
     o.scripts ??= [];
+    o.rig ??= null;
+    o.animation ??= null;
     if (LIGHT_KINDS.includes(o.kind)) o.light = { color: '#ffffff', intensity: o.kind === 'pointLight' ? 4 : 3, distance: o.kind === 'pointLight' ? 20 : 0, decay: 2, ...(o.light ?? {}) };
   }
   return s;
@@ -79,10 +115,25 @@ export function parseScene(text) {
       typeof e.fogEnabled !== 'boolean' || !color(e.fogColor) || !finite(e.fogNear) || !finite(e.fogFar) || e.fogNear < 0 || e.fogFar <= e.fogNear) {
     throw Error('Pengaturan scene tidak valid.');
   }
+  if (!Array.isArray(s.requiredPacks) || s.requiredPacks.some(p => typeof p !== 'string' || p.length > 80)) throw Error('Daftar feature pack scene tidak valid.');
   const ids = new Set();
   for (const o of s.objects) {
     const lightValid = !LIGHT_KINDS.includes(o.kind) || (o.light && color(o.light.color) && finite(o.light.intensity) && o.light.intensity >= 0 && o.light.intensity <= 100 &&
       finite(o.light.distance) && o.light.distance >= 0 && finite(o.light.decay) && o.light.decay >= 0 && o.light.decay <= 10);
+    const rigValid = o.rig === null || (MESH_KINDS.includes(o.kind) && o.rig && typeof o.rig.enabled === 'boolean' && ['generic','humanoid'].includes(o.rig.type) &&
+      typeof o.rig.rootBone === 'string' && Array.isArray(o.rig.bones) && o.rig.bones.length > 0 && o.rig.bones.length <= 256 &&
+      new Set(o.rig.bones.map(b=>b.id)).size === o.rig.bones.length &&
+      o.rig.bones.every(b => b && typeof b.id === 'string' && typeof b.name === 'string' && b.name.length <= 80 &&
+        (b.parent === null || typeof b.parent === 'string') &&
+        ['position','rotation','scale'].every(k => b[k] && ['x','y','z'].every(a => finite(b[k][a]))) &&
+        ['x','y','z'].every(a => b.scale[a] > 0)) &&
+      o.rig.bones.some(b=>b.id===o.rig.rootBone) &&
+      o.rig.bones.every(b=>b.parent===null || o.rig.bones.some(parent=>parent.id===b.parent)));
+    const animationValid = o.animation === null || (MESH_KINDS.includes(o.kind) && o.animation && typeof o.animation.enabled === 'boolean' &&
+      typeof o.animation.autoplay === 'boolean' && typeof o.animation.defaultClip === 'string' && o.animation.defaultClip.length <= 120 &&
+      Array.isArray(o.animation.clips) && o.animation.clips.length <= 128 &&
+      o.animation.clips.every(clip => clip && typeof clip.id === 'string' && typeof clip.name === 'string' && clip.name.length <= 120 &&
+        typeof clip.path === 'string' && clip.path.length <= 240 && typeof clip.loop === 'boolean' && finite(clip.speed) && clip.speed >= 0 && clip.speed <= 20));
     if (!o || typeof o.id !== 'string' || ids.has(o.id) || typeof o.name !== 'string' || !ALL_KINDS.includes(o.kind) ||
       typeof o.active !== 'boolean' || typeof o.tag !== 'string' || o.tag.length > 64 || !Number.isInteger(o.layer) || o.layer < 0 || o.layer > 31 ||
       !['position', 'rotation', 'scale'].every(k => o[k] && ['x', 'y', 'z'].every(a => finite(o[k][a]))) ||
@@ -94,7 +145,7 @@ export function parseScene(text) {
       typeof o.body?.enabled !== 'boolean' || !finite(o.body.vy) || !finite(o.body.bounce) || o.body.bounce < 0 || o.body.bounce > 1 ||
       typeof o.motion?.enabled !== 'boolean' || !finite(o.motion.speed) || o.motion.speed < 0 ||
       !Array.isArray(o.scripts) || o.scripts.length > 32 || o.scripts.some(s => !s || typeof s.id !== 'string' || typeof s.path !== 'string' || s.path.length > 240 ||
-        !['lua','c','cpp','csharp','java'].includes(s.language) || typeof s.enabled !== 'boolean') || !lightValid) throw Error('Objek 3D tidak valid.');
+        !['lua','c','cpp','csharp','java'].includes(s.language) || typeof s.enabled !== 'boolean') || !lightValid || !rigValid || !animationValid) throw Error('Objek 3D tidak valid.');
     ids.add(o.id);
   }
   return s;
