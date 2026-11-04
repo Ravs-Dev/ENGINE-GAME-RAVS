@@ -2,14 +2,44 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { TransformControls } from 'three/addons/controls/TransformControls.js';
 import { MESH_KINDS, LIGHT_KINDS } from './scene.js';
+import { modelingSignature, normalizeGeometry, normalizeModifiers } from './modeling.js';
 
-const geometryFor = kind =>
-  kind === 'sphere' ? new THREE.SphereGeometry(0.5,32,20) :
-  kind === 'cylinder' ? new THREE.CylinderGeometry(0.5,0.5,1,32) :
-  kind === 'plane' ? new THREE.PlaneGeometry(1,1) :
-  kind === 'cone' ? new THREE.ConeGeometry(0.5,1,32) :
-  kind === 'torus' ? new THREE.TorusGeometry(0.5,0.18,16,48) :
-  new THREE.BoxGeometry();
+function applyModifiers(geometry, rawModifiers){
+  const modifiers=normalizeModifiers(rawModifiers),position=geometry.getAttribute('position');
+  if(!position)return geometry;
+  geometry.computeBoundingBox();
+  const box=geometry.boundingBox,size=new THREE.Vector3();box.getSize(size);
+  const min=box.min,max=box.max;
+  const axisIndex={x:0,y:1,z:2};
+  for(let i=0;i<position.count;i++){
+    const p=[position.getX(i),position.getY(i),position.getZ(i)];
+    if(modifiers.twist.enabled&&Math.abs(modifiers.twist.angle)>0.0001){
+      const ai=axisIndex[modifiers.twist.axis],range=Math.max(.0001,max.getComponent(ai)-min.getComponent(ai));
+      const t=(p[ai]-min.getComponent(ai))/range-.5,angle=THREE.MathUtils.degToRad(modifiers.twist.angle)*t;
+      const a=(ai+1)%3,b=(ai+2)%3,ca=Math.cos(angle),sa=Math.sin(angle),pa=p[a],pb=p[b];
+      p[a]=pa*ca-pb*sa;p[b]=pa*sa+pb*ca;
+    }
+    if(modifiers.taper.enabled&&Math.abs(modifiers.taper.amount)>0.0001){
+      const ai=axisIndex[modifiers.taper.axis],range=Math.max(.0001,max.getComponent(ai)-min.getComponent(ai));
+      const t=(p[ai]-min.getComponent(ai))/range,scale=Math.max(.02,1+modifiers.taper.amount*(t-.5));
+      const a=(ai+1)%3,b=(ai+2)%3;p[a]*=scale;p[b]*=scale;
+    }
+    position.setXYZ(i,p[0],p[1],p[2]);
+  }
+  position.needsUpdate=true;geometry.computeVertexNormals();geometry.computeBoundingBox();geometry.computeBoundingSphere();return geometry;
+}
+
+function geometryFor(object){
+  const kind=object.kind,g=normalizeGeometry(kind,object.geometry);
+  let geometry=
+    kind==='sphere'?new THREE.SphereGeometry(g.radius,g.widthSegments,g.heightSegments):
+    kind==='cylinder'?new THREE.CylinderGeometry(g.radiusTop,g.radiusBottom,g.height,g.radialSegments,g.heightSegments):
+    kind==='plane'?new THREE.PlaneGeometry(g.width,g.height,g.widthSegments,g.heightSegments):
+    kind==='cone'?new THREE.ConeGeometry(g.radius,g.height,g.radialSegments,g.heightSegments):
+    kind==='torus'?new THREE.TorusGeometry(g.radius,g.tube,g.radialSegments,g.tubularSegments):
+    new THREE.BoxGeometry(g.width,g.height,g.depth,g.widthSegments,g.heightSegments,g.depthSegments);
+  return applyModifiers(geometry,object.modifiers);
+}
 
 function updateRigHelper(node, rig) {
   const signature = rig ? JSON.stringify(rig) : '';
@@ -74,7 +104,7 @@ export function createViewport(canvas, onSelect, onTransform, onTransformEnd) {
     if(MESH_KINDS.includes(o.kind)){
       const lit=new THREE.MeshStandardMaterial({side:THREE.DoubleSide});
       const unlit=new THREE.MeshBasicMaterial({side:THREE.DoubleSide});
-      node=new THREE.Mesh(geometryFor(o.kind),lit); node.userData.litMaterial=lit; node.userData.unlitMaterial=unlit;
+      node=new THREE.Mesh(geometryFor(o),lit); node.userData.litMaterial=lit; node.userData.unlitMaterial=unlit; node.userData.modelingSignature=modelingSignature(o);
     } else if(o.kind==='pointLight'){
       node=new THREE.PointLight(o.light.color,o.light.intensity,o.light.distance,o.light.decay); node.add(new THREE.PointLightHelper(node,.3));
     } else {
@@ -99,6 +129,10 @@ export function createViewport(canvas, onSelect, onTransform, onTransformEnd) {
       let n=nodes.get(o.id);if(!n||n.userData.kind!==o.kind){if(n){dispose(n);nodes.delete(o.id);}n=createNode(o);}
       n.visible=o.active;n.position.set(o.position.x,o.position.y,o.position.z);n.rotation.set(...['x','y','z'].map(a=>THREE.MathUtils.degToRad(o.rotation[a])));n.scale.set(o.scale.x,o.scale.y,o.scale.z);
       if(MESH_KINDS.includes(o.kind)){
+        const signature=modelingSignature(o);
+        if(n.userData.modelingSignature!==signature){
+          n.geometry?.dispose?.();n.geometry=geometryFor(o);n.userData.modelingSignature=signature;
+        }
         const lit=n.userData.litMaterial,unlit=n.userData.unlitMaterial;
         lit.color.set(o.color);lit.roughness=o.material.roughness;lit.metalness=o.material.metalness;lit.emissive.set(o.material.emissive);lit.emissiveIntensity=o.material.emissiveIntensity;
         unlit.color.set(o.color);
