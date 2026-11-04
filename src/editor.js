@@ -212,6 +212,9 @@ function refresh() {
         field(inspector, 'Distance', o.light, 'distance', 'number', 0, 10000);
         field(inspector, 'Decay', o.light, 'decay', 'number', 0, 10);
       }
+    } else if (PARTICLE_KINDS.includes(o.kind)) {
+      const pt=document.createElement('h2');pt.textContent='VFX';inspector.append(pt);
+      const note=document.createElement('p');note.textContent='Particle appearance and motion are controlled in Particle Emitter settings below.';inspector.append(note);
     } else if (CAMERA_KINDS.includes(o.kind)) {
       const ct=document.createElement('h2');ct.textContent='Camera';inspector.append(ct);
       field(inspector,'Main Camera',o.camera,'primary','checkbox');
