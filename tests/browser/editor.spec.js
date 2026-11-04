@@ -170,3 +170,33 @@ test('project folders, script editing and branded standalone game export', async
   await page.screenshot({path:'/tmp/ravs-070-editor.png',fullPage:true});
   expect(errors).toEqual([]);
 });
+
+test('workspace splitters resize, collapse and persist editor layout', async ({ page }) => {
+  await page.goto('/');
+  const initial = await page.locator('#outlinerPanel').evaluate(e => e.getBoundingClientRect().width);
+  const splitter = page.locator('#leftSplitter');
+  const box = await splitter.boundingBox();
+  if (!box) throw new Error('left splitter is not visible');
+  await page.mouse.move(box.x + box.width / 2, box.y + 80);
+  await page.mouse.down();
+  await page.mouse.move(box.x + 70, box.y + 80, { steps: 6 });
+  await page.mouse.up();
+  const resized = await page.locator('#outlinerPanel').evaluate(e => e.getBoundingClientRect().width);
+  expect(resized).toBeGreaterThan(initial + 40);
+  const stored = await page.evaluate(() => JSON.parse(localStorage.getItem('ravs.layout.v1')));
+  expect(stored.left).toBeGreaterThan(285);
+  await page.reload();
+  const restored = await page.locator('#outlinerPanel').evaluate(e => e.getBoundingClientRect().width);
+  expect(restored).toBeGreaterThan(initial + 40);
+  await page.locator('#collapseOutliner').click();
+  await expect(page.locator('#outlinerPanel')).toBeHidden();
+  await page.locator('#leftSplitter').click();
+  await expect(page.locator('#outlinerPanel')).toBeVisible();
+  await page.locator('#bottomSplitter').focus();
+  await page.keyboard.press('ArrowUp');
+  const bottomStored = await page.evaluate(() => JSON.parse(localStorage.getItem('ravs.layout.v1')).bottom);
+  expect(bottomStored).toBeGreaterThan(320);
+  await page.locator('#resetLayout').click();
+  const reset = await page.evaluate(() => JSON.parse(localStorage.getItem('ravs.layout.v1')));
+  expect(reset.left).toBe(285); expect(reset.right).toBe(330); expect(reset.bottom).toBe(320);
+});
