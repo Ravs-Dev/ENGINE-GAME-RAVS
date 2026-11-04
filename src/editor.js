@@ -2,12 +2,13 @@ import logo from '../assets/ravs-logo.png';
 import { createProjectPanel } from './project-panel.js';
 import { createGameHTML, validateSplash } from './game-export.js';
 import { download } from './project.js';
-import { createObject, createScene, createHumanoidRig, createAnimationController, demoScene, parseScene, step, LIGHT_KINDS, CAMERA_KINDS, MODEL_ASSET_KINDS, TERRAIN_KINDS } from './scene.js';
+import { createObject, createScene, createHumanoidRig, createAnimationController, demoScene, parseScene, step, LIGHT_KINDS, CAMERA_KINDS, MODEL_ASSET_KINDS, TERRAIN_KINDS, PARTICLE_KINDS } from './scene.js';
 import { History } from './history.js';
 import { createViewport } from './viewport.js';
 import { FEATURE_PACKS, readPackState, writePackState, isPackReady } from './feature-packs.js';
 import { MODEL_KINDS, defaultGeometry, defaultModifiers, normalizeGeometry, normalizeModifiers } from './modeling.js';
 import { defaultTerrain, normalizeTerrain } from './terrain.js';
+import { defaultParticle, normalizeParticle } from './particles.js';
 import { listPrefabs, savePrefab, instantiatePrefab, removePrefab, listMaterials, saveMaterial, applyMaterialPreset, removeMaterial } from './assets-library.js';
 const $ = id => document.getElementById(id);
 const keys = new Set(), storageKey = 'ravs.scene.3d.v2';
@@ -180,6 +181,15 @@ function refresh() {
     field(inspector, 'Layer', o, 'layer', 'number', 0, 31);
     field(inspector, 'Warna', o, 'color', 'color');
     appendModelingInspector(inspector,o);
+    if(PARTICLE_KINDS.includes(o.kind)){
+      o.particle=normalizeParticle(o.particle??defaultParticle());
+      const particle=document.createElement('section');particle.className='modeling-section';const h=document.createElement('h3');h.textContent='Particle Emitter';particle.append(h);
+      const grid=document.createElement('div');grid.className='modeling-grid';
+      modelingField(grid,'Count',o.particle,'count',1,2000,1);modelingField(grid,'Size',o.particle,'size',.005,5,.01);modelingField(grid,'Speed',o.particle,'speed',0,100,.1);modelingField(grid,'Lifetime',o.particle,'lifetime',.1,60,.1);modelingField(grid,'Spread',o.particle,'spread',0,100,.1);modelingField(grid,'Gravity',o.particle,'gravity',-100,100,.1);modelingField(grid,'Seed',o.particle,'seed',-1000000,1000000,1);
+      const colorRow=document.createElement('label');colorRow.textContent='Particle Color';const colorInput=document.createElement('input');colorInput.type='color';colorInput.value=o.particle.color;colorInput.disabled=!!backup;colorInput.onchange=()=>{o.particle.color=colorInput.value;record();refresh();};colorRow.append(colorInput);grid.append(colorRow);
+      const loopRow=document.createElement('label');loopRow.textContent='Loop';const loopInput=document.createElement('input');loopInput.type='checkbox';loopInput.checked=o.particle.loop;loopInput.disabled=!!backup;loopInput.onchange=()=>{o.particle.loop=loopInput.checked;record();refresh();};loopRow.append(loopInput);grid.append(loopRow);
+      particle.append(grid);const reset=document.createElement('button');reset.textContent='Reset Particle';reset.disabled=!!backup;reset.onclick=()=>{o.particle=defaultParticle();record();refresh();};particle.append(reset);inspector.append(particle);
+    }
     if(TERRAIN_KINDS.includes(o.kind)){
       o.terrain=normalizeTerrain(o.terrain??defaultTerrain());
       const terrain=document.createElement('section');terrain.className='modeling-section';const h=document.createElement('h3');h.textContent='Terrain';terrain.append(h);
@@ -282,7 +292,7 @@ function refresh() {
     }
   } else inspector.textContent = 'Pilih objek di viewport atau hierarchy.';
   $('name').value = scene.name; $('gravity').value = scene.gravity; $('sceneName').textContent = scene.name;
-  for (const id of ['box', 'sphere', 'cylinder', 'plane', 'cone', 'torus', 'pointLight', 'directionalLight', 'cameraActor', 'terrainActor', 'new', 'background', 'grid', 'snap', 'wireframe', 'shadows', 'exportGame', 'demo', 'save', 'export', 'import', 'name', 'gravity', 'mode', 'ambientColor', 'ambientIntensity', 'sunColor', 'sunIntensity', 'exposure', 'fogEnabled', 'fogColor', 'fogNear', 'fogFar']) $(id).disabled = !!backup;
+  for (const id of ['box', 'sphere', 'cylinder', 'plane', 'cone', 'torus', 'pointLight', 'directionalLight', 'cameraActor', 'terrainActor', 'particleActor', 'new', 'background', 'grid', 'snap', 'wireframe', 'shadows', 'exportGame', 'demo', 'save', 'export', 'import', 'name', 'gravity', 'mode', 'ambientColor', 'ambientIntensity', 'sunColor', 'sunIntensity', 'exposure', 'fogEnabled', 'fogColor', 'fogNear', 'fogFar']) $(id).disabled = !!backup;
   $('background').value = scene.background ?? '#080808';
   $('grid').checked = scene.grid ?? true;
   $('ambientColor').value = scene.environment.ambientColor; $('ambientIntensity').value = scene.environment.ambientIntensity;
@@ -294,6 +304,7 @@ function refresh() {
 for (const kind of ['box', 'sphere', 'cylinder', 'plane', 'cone', 'torus', 'pointLight', 'directionalLight']) $(kind).onclick = () => { const o = createObject(kind); scene.objects.push(o); selected = o.id; record(); refresh(); };
 $('cameraActor').onclick=()=>{const o=createObject('camera');const already=scene.objects.some(x=>CAMERA_KINDS.includes(x.kind));if(already)o.camera.primary=false;o.position={x:0,y:3,z:6};scene.objects.push(o);selected=o.id;record();refresh();status('Camera Actor ditambahkan.');};
 $('terrainActor').onclick=()=>{const o=createObject('terrain');o.position={x:0,y:0,z:0};o.color='#4f7d4a';scene.objects.push(o);selected=o.id;record();setWorkspace('modeling');refresh();status('Terrain Actor ditambahkan.');};
+$('particleActor').onclick=()=>{const o=createObject('particleEmitter');o.position={x:0,y:1,z:0};scene.objects.push(o);selected=o.id;record();refresh();status('Particle Emitter ditambahkan.');};
 $('undo').onclick = () => restoreHistory('undo');
 $('redo').onclick = () => restoreHistory('redo');
 $('search').oninput = refresh;
@@ -546,7 +557,7 @@ const menuDefinitions = {
   gameObject:[
     ['Cube',()=>addObject('box')],['Sphere',()=>addObject('sphere')],['Cylinder',()=>addObject('cylinder')],
     ['Plane',()=>addObject('plane')],['Cone',()=>addObject('cone')],['Torus',()=>addObject('torus')],
-    ['Point Light',()=>addObject('pointLight')],['Directional Light',()=>addObject('directionalLight')],['Camera',()=>$('cameraActor').click()],['Terrain',()=>$('terrainActor').click()]
+    ['Point Light',()=>addObject('pointLight')],['Directional Light',()=>addObject('directionalLight')],['Camera',()=>$('cameraActor').click()],['Terrain',()=>$('terrainActor').click()],['Particle Emitter',()=>$('particleActor').click()]
   ],
   component:[
     ['Rigidbody',()=>addComponent('rigidbody')],['Controller',()=>addComponent('controller')],['Script',()=>addComponent('script')]
