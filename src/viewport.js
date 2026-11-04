@@ -1,15 +1,76 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { TransformControls } from 'three/addons/controls/TransformControls.js';
-import { MESH_KINDS, LIGHT_KINDS } from './scene.js';
+import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+import { MESH_KINDS, LIGHT_KINDS, CAMERA_KINDS, MODEL_ASSET_KINDS, TERRAIN_KINDS } from './scene.js';
+import { modelingSignature, normalizeGeometry, normalizeModifiers } from './modeling.js';
+import { normalizeTerrain, terrainHeight, terrainSignature } from './terrain.js';
 
-const geometryFor = kind =>
-  kind === 'sphere' ? new THREE.SphereGeometry(0.5,32,20) :
-  kind === 'cylinder' ? new THREE.CylinderGeometry(0.5,0.5,1,32) :
-  kind === 'plane' ? new THREE.PlaneGeometry(1,1) :
-  kind === 'cone' ? new THREE.ConeGeometry(0.5,1,32) :
-  kind === 'torus' ? new THREE.TorusGeometry(0.5,0.18,16,48) :
-  new THREE.BoxGeometry();
+function applyModifiers(geometry, rawModifiers){
+  const modifiers=normalizeModifiers(rawModifiers),position=geometry.getAttribute('position');
+  if(!position)return geometry;
+  geometry.computeBoundingBox();
+  const box=geometry.boundingBox,size=new THREE.Vector3();box.getSize(size);
+  const min=box.min,max=box.max;
+  const axisIndex={x:0,y:1,z:2};
+  for(let i=0;i<position.count;i++){
+    const p=[position.getX(i),position.getY(i),position.getZ(i)];
+    if(modifiers.twist.enabled&&Math.abs(modifiers.twist.angle)>0.0001){
+      const ai=axisIndex[modifiers.twist.axis],range=Math.max(.0001,max.getComponent(ai)-min.getComponent(ai));
+      const t=(p[ai]-min.getComponent(ai))/range-.5,angle=THREE.MathUtils.degToRad(modifiers.twist.angle)*t;
+      const a=(ai+1)%3,b=(ai+2)%3,ca=Math.cos(angle),sa=Math.sin(angle),pa=p[a],pb=p[b];
+      p[a]=pa*ca-pb*sa;p[b]=pa*sa+pb*ca;
+    }
+    if(modifiers.taper.enabled&&Math.abs(modifiers.taper.amount)>0.0001){
+      const ai=axisIndex[modifiers.taper.axis],range=Math.max(.0001,max.getComponent(ai)-min.getComponent(ai));
+      const t=(p[ai]-min.getComponent(ai))/range,scale=Math.max(.02,1+modifiers.taper.amount*(t-.5));
+      const a=(ai+1)%3,b=(ai+2)%3;p[a]*=scale;p[b]*=scale;
+    }
+    position.setXYZ(i,p[0],p[1],p[2]);
+  }
+  position.needsUpdate=true;geometry.computeVertexNormals();geometry.computeBoundingBox();geometry.computeBoundingSphere();
+  if(modifiers.mirror.enabled){
+    const mirrored=geometry.clone(),axis=modifiers.mirror.axis,scale=new THREE.Matrix4().makeScale(axis==='x'?-1:1,axis==='y'?-1:1,axis==='z'?-1:1);
+    const translate=new THREE.Matrix4().makeTranslation(axis==='x'?2*modifiers.mirror.offset:0,axis==='y'?2*modifiers.mirror.offset:0,axis==='z'?2*modifiers.mirror.offset:0);
+    mirrored.applyMatrix4(translate.multiply(scale));
+    const merged=mergeGeometries([geometry,mirrored],false);
+    if(merged){geometry.dispose();mirrored.dispose();geometry=merged;geometry.computeVertexNormals();geometry.computeBoundingBox();geometry.computeBoundingSphere();}else mirrored.dispose();
+  }
+  return geometry;
+}
+
+function geometryFor(object){
+  const kind=object.kind,g=normalizeGeometry(kind,object.geometry);
+  let geometry=
+    kind==='sphere'?new THREE.SphereGeometry(g.radius,g.widthSegments,g.heightSegments):
+    kind==='cylinder'?new THREE.CylinderGeometry(g.radiusTop,g.radiusBottom,g.height,g.radialSegments,g.heightSegments):
+    kind==='plane'?new THREE.PlaneGeometry(g.width,g.height,g.widthSegments,g.heightSegments):
+    kind==='cone'?new THREE.ConeGeometry(g.radius,g.height,g.radialSegments,g.heightSegments):
+    kind==='torus'?new THREE.TorusGeometry(g.radius,g.tube,g.radialSegments,g.tubularSegments):
+    new THREE.BoxGeometry(g.width,g.height,g.depth,g.widthSegments,g.heightSegments,g.depthSegments);
+  return applyModifiers(geometry,object.modifiers);
+}
+
+
+function terrainGeometry(raw){
+  const t=normalizeTerrain(raw),g=new THREE.PlaneGeometry(t.width,t.depth,t.segments,t.segments);g.rotateX(-Math.PI/2);
+  const p=g.getAttribute('position');for(let i=0;i<p.count;i++){const x=p.getX(i),z=p.getZ(i);p.setY(i,terrainHeight(x,z,t));}
+  p.needsUpdate=true;g.computeVertexNormals();g.computeBoundingBox();g.computeBoundingSphere();return g;
+}
+
+function prepareImportedModel(group,object){
+  group.userData.assetSignature=object.asset?.data??'';
+  group.traverse(child=>{
+    if(!child.isMesh)return;
+    child.userData.id=object.id;
+    child.geometry?.computeVertexNormals?.();
+    const lit=new THREE.MeshStandardMaterial({side:THREE.DoubleSide});
+    const unlit=new THREE.MeshBasicMaterial({side:THREE.DoubleSide});
+    child.userData.litMaterial=lit;child.userData.unlitMaterial=unlit;child.material=lit;
+  });
+  return group;
+}
 
 function updateRigHelper(node, rig) {
   const signature = rig ? JSON.stringify(rig) : '';
@@ -74,15 +135,25 @@ export function createViewport(canvas, onSelect, onTransform, onTransformEnd) {
     if(MESH_KINDS.includes(o.kind)){
       const lit=new THREE.MeshStandardMaterial({side:THREE.DoubleSide});
       const unlit=new THREE.MeshBasicMaterial({side:THREE.DoubleSide});
-      node=new THREE.Mesh(geometryFor(o.kind),lit); node.userData.litMaterial=lit; node.userData.unlitMaterial=unlit;
+      node=new THREE.Mesh(geometryFor(o),lit); node.userData.litMaterial=lit; node.userData.unlitMaterial=unlit; node.userData.modelingSignature=modelingSignature(o);
+    } else if(MODEL_ASSET_KINDS.includes(o.kind)){
+      try{node=prepareImportedModel(new OBJLoader().parse(o.asset?.data??''),o);}catch{node=new THREE.Group();node.userData.assetSignature=o.asset?.data??'';}
+    } else if(TERRAIN_KINDS.includes(o.kind)){
+      const lit=new THREE.MeshStandardMaterial({side:THREE.DoubleSide}),unlit=new THREE.MeshBasicMaterial({side:THREE.DoubleSide});
+      node=new THREE.Mesh(terrainGeometry(o.terrain),lit);node.userData.litMaterial=lit;node.userData.unlitMaterial=unlit;node.userData.terrainSignature=terrainSignature(o.terrain);
     } else if(o.kind==='pointLight'){
       node=new THREE.PointLight(o.light.color,o.light.intensity,o.light.distance,o.light.decay); node.add(new THREE.PointLightHelper(node,.3));
-    } else {
+    } else if(o.kind==='directionalLight'){
       node=new THREE.DirectionalLight(o.light.color,o.light.intensity); node.add(new THREE.DirectionalLightHelper(node,.7));
+    } else {
+      node=new THREE.Group();
+      const previewCamera=new THREE.PerspectiveCamera(o.camera?.fov??60,1,o.camera?.near??0.1,o.camera?.far??2000);
+      const helper=new THREE.CameraHelper(previewCamera);helper.userData.id=o.id;node.add(previewCamera,helper);node.userData.previewCamera=previewCamera;node.userData.cameraHelper=helper;
     }
     node.userData.id=o.id;node.userData.kind=o.kind;nodes.set(o.id,node);group.add(node);return node;
   }
   function dispose(node){
+    node.traverse?.(child=>{if(child!==node){child.geometry?.dispose?.();child.userData?.litMaterial?.dispose?.();child.userData?.unlitMaterial?.dispose?.();if(child.material&&!child.userData?.litMaterial)child.material.dispose?.();}});
     if(node.geometry)node.geometry.dispose();
     node.userData.rigHelper?.traverse?.(child=>{child.geometry?.dispose?.();child.material?.dispose?.();});
     node.userData.litMaterial?.dispose(); node.userData.unlitMaterial?.dispose();
@@ -96,16 +167,32 @@ export function createViewport(canvas, onSelect, onTransform, onTransformEnd) {
     sun.color.set(env.sunColor);sun.intensity=env.sunIntensity;world.fog=env.fogEnabled?new THREE.Fog(env.fogColor,env.fogNear,env.fogFar):null;
     for(const [id,n] of nodes)if(!scene.objects.some(o=>o.id===id)){if(gizmo.object===n)gizmo.detach();dispose(n);nodes.delete(id);}
     for(const o of scene.objects){
-      let n=nodes.get(o.id);if(!n||n.userData.kind!==o.kind){if(n){dispose(n);nodes.delete(o.id);}n=createNode(o);}
+      let n=nodes.get(o.id);
+      if(n&&MODEL_ASSET_KINDS.includes(o.kind)&&n.userData.assetSignature!==(o.asset?.data??'')){dispose(n);nodes.delete(o.id);n=null;}
+      if(n&&TERRAIN_KINDS.includes(o.kind)&&n.userData.terrainSignature!==terrainSignature(o.terrain)){n.geometry?.dispose?.();n.geometry=terrainGeometry(o.terrain);n.userData.terrainSignature=terrainSignature(o.terrain);}
+      if(!n||n.userData.kind!==o.kind){if(n){dispose(n);nodes.delete(o.id);}n=createNode(o);}
       n.visible=o.active;n.position.set(o.position.x,o.position.y,o.position.z);n.rotation.set(...['x','y','z'].map(a=>THREE.MathUtils.degToRad(o.rotation[a])));n.scale.set(o.scale.x,o.scale.y,o.scale.z);
       if(MESH_KINDS.includes(o.kind)){
+        const signature=modelingSignature(o);
+        if(n.userData.modelingSignature!==signature){
+          n.geometry?.dispose?.();n.geometry=geometryFor(o);n.userData.modelingSignature=signature;
+        }
         const lit=n.userData.litMaterial,unlit=n.userData.unlitMaterial;
         lit.color.set(o.color);lit.roughness=o.material.roughness;lit.metalness=o.material.metalness;lit.emissive.set(o.material.emissive);lit.emissiveIntensity=o.material.emissiveIntensity;
         unlit.color.set(o.color);
         const wf=wireframe||shading==='wireframe'||o.material.wireframe;lit.wireframe=wf;unlit.wireframe=wf;n.material=shading==='unlit'?unlit:lit;
         n.castShadow=shadows&&o.render.castShadow;n.receiveShadow=shadows&&o.render.receiveShadow;updateRigHelper(n,o.rig);
       }
+      if(MODEL_ASSET_KINDS.includes(o.kind)){
+        n.traverse(child=>{if(!child.isMesh)return;const lit=child.userData.litMaterial,unlit=child.userData.unlitMaterial;if(!lit||!unlit)return;lit.color.set(o.color);lit.roughness=o.material.roughness;lit.metalness=o.material.metalness;lit.emissive.set(o.material.emissive);lit.emissiveIntensity=o.material.emissiveIntensity;unlit.color.set(o.color);const wf=wireframe||shading==='wireframe'||o.material.wireframe;lit.wireframe=wf;unlit.wireframe=wf;child.material=shading==='unlit'?unlit:lit;child.castShadow=shadows&&o.render.castShadow;child.receiveShadow=shadows&&o.render.receiveShadow;});
+      }
+      if(TERRAIN_KINDS.includes(o.kind)){
+        const lit=n.userData.litMaterial,unlit=n.userData.unlitMaterial;lit.color.set(o.color);lit.roughness=o.material.roughness;lit.metalness=o.material.metalness;lit.emissive.set(o.material.emissive);lit.emissiveIntensity=o.material.emissiveIntensity;unlit.color.set(o.color);const wf=wireframe||shading==='wireframe'||o.material.wireframe;lit.wireframe=wf;unlit.wireframe=wf;n.material=shading==='unlit'?unlit:lit;n.castShadow=shadows&&o.render.castShadow;n.receiveShadow=shadows&&o.render.receiveShadow;
+      }
       if(LIGHT_KINDS.includes(o.kind)){n.color.set(o.light.color);n.intensity=o.light.intensity;n.castShadow=shadows&&o.render.castShadow;if(o.kind==='pointLight'){n.distance=o.light.distance;n.decay=o.light.decay;}}
+      if(CAMERA_KINDS.includes(o.kind)){
+        const pc=n.userData.previewCamera;if(pc){pc.fov=o.camera.fov;pc.near=o.camera.near;pc.far=o.camera.far;pc.updateProjectionMatrix();n.userData.cameraHelper?.update();}
+      }
     }
     const n=nodes.get(selected);if(n&&n.visible&&!playing){if(gizmo.object!==n)gizmo.attach(n);outline.setFromObject(n);outline.visible=true;}else{gizmo.detach();outline.visible=false;}
   }
@@ -121,6 +208,12 @@ export function createViewport(canvas, onSelect, onTransform, onTransformEnd) {
     setSnap:v=>{gizmo.setTranslationSnap(v?.5:null);gizmo.setRotationSnap(v?Math.PI/12:null);gizmo.setScaleSnap(v?.25:null);},
     setMode:m=>gizmo.setMode(m),
     focus(id){const n=nodes.get(id);if(!n)return;orbit.target.copy(n.position);camera.position.copy(n.position).add(new THREE.Vector3(5,4,6));orbit.update();},
+    viewThrough(id){
+      const n=nodes.get(id);if(!n?.userData?.previewCamera)return false;
+      const source=n.userData.previewCamera;
+      camera.fov=source.fov;camera.near=source.near;camera.far=source.far;camera.position.copy(n.position);camera.quaternion.copy(n.quaternion);camera.updateProjectionMatrix();
+      const forward=new THREE.Vector3(0,0,-1).applyQuaternion(camera.quaternion);orbit.target.copy(camera.position).addScaledVector(forward,5);orbit.update();return true;
+    },
     stats(){return {calls:renderer.info.render.calls,triangles:renderer.info.render.triangles,lines:renderer.info.render.lines};},
     render(){const w=Math.max(1,canvas.clientWidth),h=Math.max(1,canvas.clientHeight);if(canvas.width!==Math.floor(w*renderer.getPixelRatio())||canvas.height!==Math.floor(h*renderer.getPixelRatio())){renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix();}orbit.update();renderer.render(world,camera);}
   };

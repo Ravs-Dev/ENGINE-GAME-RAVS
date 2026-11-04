@@ -1,6 +1,6 @@
 # RAVS Engine 3D
 
-Editor game **3D desktop untuk Windows dan Linux**, menggunakan Electron, Three.js, dan WebGL 2. Versi 0.5 menambahkan Project Files, editor script/teks, tema hitam, logo Ravs, serta ekspor game HTML dengan loading screen; mode browser tetap tersedia untuk pengembangan. Pengguna aplikasi hasil build tidak perlu memasang Node.js atau menjalankan server.
+Editor game **3D desktop untuk Windows dan Linux** berbasis Electron, Three.js, dan WebGL 2. RAVS Engine 3D v1.0 menambahkan workspace Level/Modeling/Animation/Build, parametric modeling, modifier Twist/Taper/Mirror, Camera Actor, OBJ import, Prefab, Material Preset, Feature Pack Manager, serta ekspor game HTML dengan branding **Made with RAVS Engine**. Pengguna aplikasi hasil build tidak perlu memasang Node.js atau menjalankan server.
 
 ## Unduh dan instal
 
@@ -37,6 +37,20 @@ Buka `http://localhost:3000` pada browser lokal. Gunakan `PORT=4000 npm start` u
 
 Scene demo memuat Ground, Player, dan Sphere. Pilih Player lalu Play untuk mencoba gerakan. Edit scene dinonaktifkan selama Play.
 
+## Baru di versi 1.0
+
+- Workspace **Level / Modeling / Animation / Build**.
+- Primitive **Cube, Sphere, Cylinder, Plane, Cone, Torus** dengan parameter ukuran dan segment.
+- Modifier geometry **Twist, Taper, Mirror** yang dirender real-time dan ikut ke game export.
+- **Import OBJ** hingga 4 MB sebagai asset scene embedded.
+- **Camera Actor** dengan FOV/Near/Far, Main Camera, dan Preview Camera.
+- **Prefab Library**: simpan object lalu instantiate ulang.
+- **Material Preset Library**: simpan dan apply material PBR.
+- **Animation Clip editor** untuk object yang memiliki Rig/Armature.
+- **Feature Pack Manager** untuk pack engine dan toolchain eksternal.
+- Panel dapat resize/collapse, layout tersimpan, preset Level/Scripting/Cinematic, serta Maximize Viewport.
+- Branding RAVS hanya muncul pada **game hasil build/export**, bukan saat Play/Simulate di editor.
+
 ## Baru di versi 0.5
 
 ### File, folder, dan script
@@ -53,9 +67,9 @@ Panel **Project Files** berada di bawah viewport. Isi **Nama baru**, lalu pilih 
 
 Tema editor menjadi hitam dengan aksen cyan. Logo putih-biru diadaptasi dari referensi pemilik proyek dan dipakai pada ikon installer Windows/Linux, jendela aplikasi, header, serta loading screen. Berkas logo berada di `assets/ravs-logo.png`; ikon packaging berada di `build/icon.png`.
 
-Atur **Judul game** dan **Durasi minimum** pada panel Loading Screen, lalu klik **Pratinjau Loading**. Logo dan nama **Ravs** muncul saat aplikasi dibuka dan sebelum Play. **Ekspor Game HTML** menghasilkan satu file `game-ravs.html` yang berisi renderer, scene, logo, dan loading screen; game ini dapat dibuka dengan browser WebGL 2 tanpa CDN. Pergerakan WASD/panah dan simulasi bawaan ikut diekspor, tetapi script proyek belum dijalankan. Ini belum mengekspor game menjadi EXE.
+Atur **Judul game** dan durasi startup branding pada **Game Startup Branding**. Editor Play/Simulate langsung berjalan tanpa splash. **Ekspor Game HTML** menghasilkan `game-ravs.html`; saat game hasil build dibuka, logo RAVS dan teks **Made with RAVS Engine** tampil sebelum scene pertama. Geometry modeling, OBJ embedded, Main Camera, WASD/panah, dan simulasi bawaan ikut diekspor. Script proyek masih berupa component metadata dan belum dieksekusi sebagai runtime native.
 
-**Memperbarui aplikasi:** tutup versi lama lalu instal versi 0.5.1 dari Releases. Aplikasi belum memiliki auto-update. Mengubah source/logo di GitHub tidak mengganti installer versi lama; gunakan installer baru. Backup scene/proyek sebelum memperbarui.
+**Memperbarui aplikasi:** tutup versi lama lalu instal versi terbaru dari Releases. Aplikasi belum memiliki auto-update. Mengubah source/logo di GitHub tidak mengganti installer versi lama; gunakan installer baru. Backup scene/proyek sebelum memperbarui.
 
 ## Fitur dari versi 0.4
 

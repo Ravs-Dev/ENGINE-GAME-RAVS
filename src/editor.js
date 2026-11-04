@@ -2,10 +2,13 @@ import logo from '../assets/ravs-logo.png';
 import { createProjectPanel } from './project-panel.js';
 import { createGameHTML, validateSplash } from './game-export.js';
 import { download } from './project.js';
-import { createObject, createScene, createHumanoidRig, createAnimationController, demoScene, parseScene, step, LIGHT_KINDS } from './scene.js';
+import { createObject, createScene, createHumanoidRig, createAnimationController, demoScene, parseScene, step, LIGHT_KINDS, CAMERA_KINDS, MODEL_ASSET_KINDS, TERRAIN_KINDS } from './scene.js';
 import { History } from './history.js';
 import { createViewport } from './viewport.js';
 import { FEATURE_PACKS, readPackState, writePackState, isPackReady } from './feature-packs.js';
+import { MODEL_KINDS, defaultGeometry, defaultModifiers, normalizeGeometry, normalizeModifiers } from './modeling.js';
+import { defaultTerrain, normalizeTerrain } from './terrain.js';
+import { listPrefabs, savePrefab, instantiatePrefab, removePrefab, listMaterials, saveMaterial, applyMaterialPreset, removeMaterial } from './assets-library.js';
 const $ = id => document.getElementById(id);
 const keys = new Set(), storageKey = 'ravs.scene.3d.v2';
 const layoutStorageKey = 'ravs.layout.v1';
@@ -15,7 +18,7 @@ try {
   const savedLayout = JSON.parse(localStorage.getItem(layoutStorageKey) || 'null');
   if (savedLayout && typeof savedLayout === 'object') editorLayout = {...defaultLayout,...savedLayout};
 } catch { editorLayout = {...defaultLayout}; }
-let scene = demoScene(), selected = scene.objects[1].id, backup = null, last = 0, paused = false, stepOnce = false, activeView = 'scene', simulating = false, fpsTime = performance.now(), fpsFrames = 0;
+let scene = demoScene(), selected = scene.objects[1].id, backup = null, last = 0, paused = false, stepOnce = false, activeView = 'scene', simulating = false, fpsTime = performance.now(), fpsFrames = 0, workspaceMode='level';
 const consoleEntries = [];
 function pushConsole(text, level='log') {
   consoleEntries.push({time:new Date().toLocaleTimeString(),text:String(text),level});
@@ -94,6 +97,71 @@ function field(parent, label, target, key, type, min, max) {
   };
   row.append(input); parent.append(row);
 }
+
+function appendSelect(parent,label,target,key,options){
+  const row=document.createElement('label');row.textContent=label;const select=document.createElement('select');
+  for(const value of options){const option=document.createElement('option');option.value=value;option.textContent=value.toUpperCase();select.append(option);}
+  select.value=target[key];select.disabled=!!backup;select.onchange=()=>{target[key]=select.value;record();refresh();};row.append(select);parent.append(row);
+}
+function modelingField(parent,label,target,key,min,max,stepValue=.1){
+  const row=document.createElement('label'),input=document.createElement('input');row.textContent=label;input.type='number';input.value=target[key];input.min=min;input.max=max;input.step=stepValue;input.disabled=!!backup;
+  input.onchange=()=>{const value=Number(input.value);if(!Number.isFinite(value))return;target[key]=Math.max(min,Math.min(max,value));record();refresh();};row.append(input);parent.append(row);
+}
+function appendModelingInspector(inspector,o){
+  if(!MODEL_KINDS.includes(o.kind))return;
+  o.geometry=normalizeGeometry(o.kind,o.geometry??defaultGeometry(o.kind));o.modifiers=normalizeModifiers(o.modifiers??defaultModifiers());
+  const section=document.createElement('section');section.className='modeling-section';
+  const title=document.createElement('h3');title.textContent='Modeling · Geometry';section.append(title);
+  const grid=document.createElement('div');grid.className='modeling-grid';section.append(grid);
+  const specs={
+    box:[['Width','width',.01,1000,.1],['Height','height',.01,1000,.1],['Depth','depth',.01,1000,.1],['Width Segments','widthSegments',1,64,1],['Height Segments','heightSegments',1,64,1],['Depth Segments','depthSegments',1,64,1]],
+    sphere:[['Radius','radius',.01,1000,.1],['Width Segments','widthSegments',3,128,1],['Height Segments','heightSegments',2,128,1]],
+    cylinder:[['Radius Top','radiusTop',0,1000,.1],['Radius Bottom','radiusBottom',0,1000,.1],['Height','height',.01,1000,.1],['Radial Segments','radialSegments',3,128,1],['Height Segments','heightSegments',1,64,1]],
+    plane:[['Width','width',.01,1000,.1],['Height','height',.01,1000,.1],['Width Segments','widthSegments',1,128,1],['Height Segments','heightSegments',1,128,1]],
+    cone:[['Radius','radius',.01,1000,.1],['Height','height',.01,1000,.1],['Radial Segments','radialSegments',3,128,1],['Height Segments','heightSegments',1,64,1]],
+    torus:[['Radius','radius',.01,1000,.1],['Tube','tube',.005,1000,.05],['Radial Segments','radialSegments',3,64,1],['Tubular Segments','tubularSegments',3,256,1]]
+  };
+  for(const [label,key,min,max,stepValue] of specs[o.kind])modelingField(grid,label,o.geometry,key,min,max,stepValue);
+  const reset=document.createElement('button');reset.textContent='Reset Geometry';reset.disabled=!!backup;reset.onclick=()=>{o.geometry=defaultGeometry(o.kind);o.modifiers=defaultModifiers();record();refresh();status('Geometry '+o.name+' di-reset.');};section.append(reset);
+  const twist=document.createElement('div');twist.className='modifier-card';const th=document.createElement('div');th.className='modifier-head';const ts=document.createElement('strong');ts.textContent='Twist Modifier';const te=document.createElement('input');te.type='checkbox';te.checked=o.modifiers.twist.enabled;te.disabled=!!backup;te.onchange=()=>{o.modifiers.twist.enabled=te.checked;record();refresh();};th.append(ts,te);twist.append(th);
+  const tg=document.createElement('div');tg.className='modeling-grid';modelingField(tg,'Angle °',o.modifiers.twist,'angle',-1080,1080,5);appendSelect(tg,'Axis',o.modifiers.twist,'axis',['x','y','z']);twist.append(tg);section.append(twist);
+  const taper=document.createElement('div');taper.className='modifier-card';const ph=document.createElement('div');ph.className='modifier-head';const ps=document.createElement('strong');ps.textContent='Taper Modifier';const pe=document.createElement('input');pe.type='checkbox';pe.checked=o.modifiers.taper.enabled;pe.disabled=!!backup;pe.onchange=()=>{o.modifiers.taper.enabled=pe.checked;record();refresh();};ph.append(ps,pe);taper.append(ph);
+  const pg=document.createElement('div');pg.className='modeling-grid';modelingField(pg,'Amount',o.modifiers.taper,'amount',-.95,4,.05);appendSelect(pg,'Axis',o.modifiers.taper,'axis',['x','y','z']);taper.append(pg);section.append(taper);
+  const mirror=document.createElement('div');mirror.className='modifier-card';const mh=document.createElement('div');mh.className='modifier-head';const ms=document.createElement('strong');ms.textContent='Mirror Modifier';const me=document.createElement('input');me.type='checkbox';me.checked=o.modifiers.mirror.enabled;me.disabled=!!backup;me.onchange=()=>{o.modifiers.mirror.enabled=me.checked;record();refresh();};mh.append(ms,me);mirror.append(mh);
+  const mg=document.createElement('div');mg.className='modeling-grid';appendSelect(mg,'Axis',o.modifiers.mirror,'axis',['x','y','z']);modelingField(mg,'Offset',o.modifiers.mirror,'offset',-1000,1000,.1);mirror.append(mg);section.append(mirror);
+  inspector.append(section);
+}
+function renderAssetLibrary(){
+  const prefabs=$('prefabList'),materials=$('materialPresetList');if(!prefabs||!materials)return;
+  prefabs.replaceChildren();materials.replaceChildren();
+  for(const prefab of listPrefabs()){
+    const card=document.createElement('div');card.className='asset-card';const meta=document.createElement('div');const name=document.createElement('strong');name.textContent=prefab.name;const small=document.createElement('small');small.textContent='Prefab · '+new Date(prefab.createdAt).toLocaleDateString();meta.append(name,small);
+    const actions=document.createElement('div');actions.className='asset-card-actions';const use=document.createElement('button');use.textContent='Instantiate';use.onclick=()=>{if(backup)return;const o=instantiatePrefab(prefab);scene.objects.push(o);selected=o.id;record();refresh();status('Prefab '+prefab.name+' di-instantiate.');};const del=document.createElement('button');del.textContent='×';del.onclick=()=>{removePrefab(prefab.id);renderAssetLibrary();};actions.append(use,del);card.append(meta,actions);prefabs.append(card);
+  }
+  for(const preset of listMaterials()){
+    const card=document.createElement('div');card.className='asset-card';const meta=document.createElement('div');const name=document.createElement('strong');name.textContent=preset.name;const small=document.createElement('small');small.textContent='Material Preset';meta.append(name,small);
+    const actions=document.createElement('div');actions.className='asset-card-actions';const use=document.createElement('button');use.textContent='Apply';use.onclick=()=>{const o=scene.objects.find(x=>x.id===selected);if(!o||LIGHT_KINDS.includes(o.kind)||CAMERA_KINDS.includes(o.kind)){status('Pilih mesh/model untuk Apply Material.');return;}applyMaterialPreset(o,preset);record();refresh();status('Material '+preset.name+' diterapkan.');};const del=document.createElement('button');del.textContent='×';del.onclick=()=>{removeMaterial(preset.id);renderAssetLibrary();};actions.append(use,del);card.append(meta,actions);materials.append(card);
+  }
+}
+function selectedModel(){return scene.objects.find(o=>o.id===selected&&MODEL_KINDS.includes(o.kind));}
+function estimatedHalfHeight(o){
+  if(!o)return 0;
+  const g=normalizeGeometry(o.kind,o.geometry);
+  const base=o.kind==='sphere'?g.radius:(o.kind==='cylinder'||o.kind==='cone')?g.height/2:o.kind==='torus'?g.radius+g.tube:o.kind==='plane'?0.01:g.height/2;
+  return base*Math.abs(o.scale.y);
+}
+function setWorkspace(mode){
+  workspaceMode=['level','modeling','animation','build'].includes(mode)?mode:'level';
+  for(const name of ['Level','Modeling','Animation','Build']) $('workspace'+name)?.classList.toggle('active',workspaceMode===name.toLowerCase());
+  $('modelingToolbar').hidden=workspaceMode!=='modeling';
+  document.body.classList.toggle('workspace-build-focus',workspaceMode==='build');
+  if(workspaceMode==='build')$('packManagerPanel')?.scrollIntoView({behavior:'smooth',block:'start'});
+  if(workspaceMode==='animation'){const o=scene.objects.find(o=>o.id===selected);status(o?.rig?'Animation workspace · '+o.name+' · '+o.rig.bones.length+' bones':'Animation workspace · pilih object yang memiliki Rig/Armature.');}
+  else if(workspaceMode==='modeling')status('Modeling workspace · pilih mesh lalu edit Geometry/Modifiers di Details.');
+  else if(workspaceMode==='build')status('Build workspace · periksa feature pack dan toolchain sebelum export.');
+  else status('Level workspace.');
+  refresh();
+}
 function refresh() {
   const hierarchy = $('hierarchy'), inspector = $('inspector'); hierarchy.replaceChildren(); inspector.replaceChildren();
   for (const o of scene.objects.filter(o => o.name.toLowerCase().includes($('search').value.toLowerCase()))) {
@@ -111,6 +179,21 @@ function refresh() {
     field(inspector, 'Tag', o, 'tag', 'text');
     field(inspector, 'Layer', o, 'layer', 'number', 0, 31);
     field(inspector, 'Warna', o, 'color', 'color');
+    appendModelingInspector(inspector,o);
+    if(TERRAIN_KINDS.includes(o.kind)){
+      o.terrain=normalizeTerrain(o.terrain??defaultTerrain());
+      const terrain=document.createElement('section');terrain.className='modeling-section';const h=document.createElement('h3');h.textContent='Terrain';terrain.append(h);
+      const grid=document.createElement('div');grid.className='modeling-grid';
+      modelingField(grid,'Width',o.terrain,'width',1,1000,.5);modelingField(grid,'Depth',o.terrain,'depth',1,1000,.5);modelingField(grid,'Resolution',o.terrain,'segments',2,160,1);
+      modelingField(grid,'Height',o.terrain,'height',0,100,.1);modelingField(grid,'Frequency',o.terrain,'frequency',.001,10,.01);modelingField(grid,'Seed',o.terrain,'seed',-1000000,1000000,1);
+      terrain.append(grid);const reset=document.createElement('button');reset.textContent='Reset Terrain';reset.disabled=!!backup;reset.onclick=()=>{o.terrain=defaultTerrain();record();refresh();};terrain.append(reset);inspector.append(terrain);
+    }
+    if(MODEL_ASSET_KINDS.includes(o.kind)){
+      const asset=document.createElement('section');asset.className='modeling-section';
+      const h=document.createElement('h3');h.textContent='Imported Model';asset.append(h);
+      const p=document.createElement('p');p.textContent=(o.asset?.name??'model.obj')+' · OBJ · '+Math.max(1,Math.round((o.asset?.data?.length??0)/1024))+' KB embedded';asset.append(p);
+      inspector.append(asset);
+    }
     if (LIGHT_KINDS.includes(o.kind)) {
       const lt = document.createElement('h2'); lt.textContent = 'Light'; inspector.append(lt);
       field(inspector, 'Color', o.light, 'color', 'color');
@@ -119,6 +202,14 @@ function refresh() {
         field(inspector, 'Distance', o.light, 'distance', 'number', 0, 10000);
         field(inspector, 'Decay', o.light, 'decay', 'number', 0, 10);
       }
+    } else if (CAMERA_KINDS.includes(o.kind)) {
+      const ct=document.createElement('h2');ct.textContent='Camera';inspector.append(ct);
+      field(inspector,'Main Camera',o.camera,'primary','checkbox');
+      field(inspector,'Field of View',o.camera,'fov','number',10,170);
+      field(inspector,'Near Clip',o.camera,'near','number',0.01,1000);
+      field(inspector,'Far Clip',o.camera,'far','number',0.02,10000);
+      const makeMain=document.createElement('button');makeMain.textContent='Set as Main Camera';makeMain.disabled=!!backup;makeMain.onclick=()=>{for(const item of scene.objects)if(CAMERA_KINDS.includes(item.kind))item.camera.primary=item===o;record();refresh();status(o.name+' menjadi Main Camera.');};inspector.append(makeMain);
+      const preview=document.createElement('button');preview.textContent='Preview Camera';preview.onclick=()=>{if(viewport?.viewThrough(o.id))status('Preview '+o.name+' aktif di Scene viewport.');};inspector.append(preview);
     } else {
       const mt = document.createElement('h2'); mt.textContent = 'Material PBR'; inspector.append(mt);
       field(inspector, 'Roughness', o.material, 'roughness', 'number', 0, 1);
@@ -129,11 +220,13 @@ function refresh() {
       field(inspector, 'Cast Shadow', o.render, 'castShadow', 'checkbox');
       field(inspector, 'Receive Shadow', o.render, 'receiveShadow', 'checkbox');
     }
-    field(inspector, 'Rigidbody', o.body, 'enabled', 'checkbox');
-    field(inspector, 'Bounce', o.body, 'bounce', 'number', 0, 1);
-    field(inspector, 'Controller', o.motion, 'enabled', 'checkbox');
-    field(inspector, 'Kecepatan', o.motion, 'speed', 'number', 0, 100);
-    if (!LIGHT_KINDS.includes(o.kind)) {
+    if(MODEL_KINDS.includes(o.kind)){
+      field(inspector, 'Rigidbody', o.body, 'enabled', 'checkbox');
+      field(inspector, 'Bounce', o.body, 'bounce', 'number', 0, 1);
+      field(inspector, 'Controller', o.motion, 'enabled', 'checkbox');
+      field(inspector, 'Kecepatan', o.motion, 'speed', 'number', 0, 100);
+    }
+    if (MODEL_KINDS.includes(o.kind)) {
       const rt=document.createElement('h2'); rt.textContent='Rig / Armature'; inspector.append(rt);
       if (!o.rig) {
         const addRig=document.createElement('button'); addRig.textContent='+ Humanoid Rig';
@@ -149,7 +242,13 @@ function refresh() {
       const at=document.createElement('h2');at.textContent='Animation';inspector.append(at);
       if(o.animation){
         field(inspector,'Enabled',o.animation,'enabled','checkbox');field(inspector,'Autoplay',o.animation,'autoplay','checkbox');field(inspector,'Default Clip',o.animation,'defaultClip','text');
-        for(const clip of o.animation.clips){const row=document.createElement('div');row.className='animation-clip';const name=document.createElement('strong');name.textContent=clip.name;const path=document.createElement('span');path.textContent=clip.path;row.append(name,path);inspector.append(row);}
+        for(const clip of o.animation.clips){
+          const card=document.createElement('div');card.className='modifier-card';
+          const head=document.createElement('div');head.className='modifier-head';const title=document.createElement('strong');title.textContent=clip.name||'Animation Clip';
+          const del=document.createElement('button');del.textContent='×';del.disabled=!!backup;del.onclick=()=>{o.animation.clips=o.animation.clips.filter(x=>x!==clip);if(o.animation.defaultClip===clip.name)o.animation.defaultClip=o.animation.clips[0]?.name??'';record();refresh();};head.append(title,del);card.append(head);
+          field(card,'Name',clip,'name','text');field(card,'Path',clip,'path','text');field(card,'Loop',clip,'loop','checkbox');field(card,'Speed',clip,'speed','number',0,20);inspector.append(card);
+        }
+        const addClip=document.createElement('button');addClip.textContent='+ Add Animation Clip';addClip.disabled=!!backup;addClip.onclick=()=>{const n='Clip '+(o.animation.clips.length+1);o.animation.clips.push({id:crypto.randomUUID(),name:n,path:'Animations/'+n.replace(/\s+/g,'')+'.anim',loop:true,speed:1});if(!o.animation.defaultClip)o.animation.defaultClip=n;record();refresh();};inspector.append(addClip);
       } else {
         const note=document.createElement('p');note.textContent='Tambahkan Humanoid Rig untuk membuat Animation Controller.';inspector.append(note);
       }
@@ -169,6 +268,10 @@ function refresh() {
     }
     const addScript=document.createElement('button'); addScript.textContent='+ Add Script'; addScript.disabled=!!backup;
     addScript.onclick=()=>{o.scripts.push({id:crypto.randomUUID(),language:'lua',path:'Scripts/Main.lua',enabled:true});record();refresh();}; inspector.append(addScript);
+    if(!LIGHT_KINDS.includes(o.kind)&&!CAMERA_KINDS.includes(o.kind)){
+      const saveMat=document.createElement('button');saveMat.textContent='Save Material Preset';saveMat.disabled=!!backup;saveMat.onclick=()=>{const name=prompt('Nama material preset',o.name+' Material');if(!name)return;saveMaterial(name,o);renderAssetLibrary();status('Material preset tersimpan.');};inspector.append(saveMat);
+    }
+    const savePf=document.createElement('button');savePf.textContent='Save as Prefab';savePf.disabled=!!backup;savePf.onclick=()=>{const name=prompt('Nama prefab',o.name);if(!name)return;savePrefab(name,o);renderAssetLibrary();status('Prefab '+name+' tersimpan.');};inspector.append(savePf);
     for (const [name, action] of [
       ['Fokus', () => viewport?.focus(o.id)],
       ['Duplikat', () => { const n = structuredClone(o); n.id = crypto.randomUUID(); n.name += ' Copy'; n.position.x += 1.5; scene.objects.push(n); selected = n.id; }],
@@ -179,7 +282,7 @@ function refresh() {
     }
   } else inspector.textContent = 'Pilih objek di viewport atau hierarchy.';
   $('name').value = scene.name; $('gravity').value = scene.gravity; $('sceneName').textContent = scene.name;
-  for (const id of ['box', 'sphere', 'cylinder', 'plane', 'cone', 'torus', 'pointLight', 'directionalLight', 'new', 'background', 'grid', 'snap', 'wireframe', 'shadows', 'exportGame', 'demo', 'save', 'export', 'import', 'name', 'gravity', 'mode', 'ambientColor', 'ambientIntensity', 'sunColor', 'sunIntensity', 'exposure', 'fogEnabled', 'fogColor', 'fogNear', 'fogFar']) $(id).disabled = !!backup;
+  for (const id of ['box', 'sphere', 'cylinder', 'plane', 'cone', 'torus', 'pointLight', 'directionalLight', 'cameraActor', 'terrainActor', 'new', 'background', 'grid', 'snap', 'wireframe', 'shadows', 'exportGame', 'demo', 'save', 'export', 'import', 'name', 'gravity', 'mode', 'ambientColor', 'ambientIntensity', 'sunColor', 'sunIntensity', 'exposure', 'fogEnabled', 'fogColor', 'fogNear', 'fogFar']) $(id).disabled = !!backup;
   $('background').value = scene.background ?? '#080808';
   $('grid').checked = scene.grid ?? true;
   $('ambientColor').value = scene.environment.ambientColor; $('ambientIntensity').value = scene.environment.ambientIntensity;
@@ -189,6 +292,8 @@ function refresh() {
   viewport?.sync(scene, selected, !!backup);
 }
 for (const kind of ['box', 'sphere', 'cylinder', 'plane', 'cone', 'torus', 'pointLight', 'directionalLight']) $(kind).onclick = () => { const o = createObject(kind); scene.objects.push(o); selected = o.id; record(); refresh(); };
+$('cameraActor').onclick=()=>{const o=createObject('camera');const already=scene.objects.some(x=>CAMERA_KINDS.includes(x.kind));if(already)o.camera.primary=false;o.position={x:0,y:3,z:6};scene.objects.push(o);selected=o.id;record();refresh();status('Camera Actor ditambahkan.');};
+$('terrainActor').onclick=()=>{const o=createObject('terrain');o.position={x:0,y:0,z:0};o.color='#4f7d4a';scene.objects.push(o);selected=o.id;record();setWorkspace('modeling');refresh();status('Terrain Actor ditambahkan.');};
 $('undo').onclick = () => restoreHistory('undo');
 $('redo').onclick = () => restoreHistory('redo');
 $('search').oninput = refresh;
@@ -304,8 +409,9 @@ for (const [id,mode] of [['toolMove','translate'],['toolRotate','rotate'],['tool
 }
 $('toolHand').onclick=()=>{ if(backup)return; for(const b of ['toolMove','toolRotate','toolScale','toolHand']) $(b).classList.toggle('active',b==='toolHand'); status('Hand/View tool aktif.'); };
 $('mode').onchange = e => { viewport?.setMode(e.target.value); const id={translate:'toolMove',rotate:'toolRotate',scale:'toolScale'}[e.target.value]; for(const b of ['toolMove','toolRotate','toolScale','toolHand']) $(b).classList.toggle('active',b===id); };
-$('projectTab').onclick=()=>{ $('contentWorkspace').classList.remove('drawer-collapsed'); $('projectView').hidden=false; $('consoleView').hidden=true; $('projectTab').classList.add('active'); $('consoleTab').classList.remove('active'); };
-$('consoleTab').onclick=()=>{ $('contentWorkspace').classList.remove('drawer-collapsed'); $('projectView').hidden=true; $('consoleView').hidden=false; $('consoleTab').classList.add('active'); $('projectTab').classList.remove('active'); };
+$('projectTab').onclick=()=>{ $('contentWorkspace').classList.remove('drawer-collapsed'); $('projectView').hidden=false; $('assetLibraryView').hidden=true; $('consoleView').hidden=true; $('projectTab').classList.add('active'); $('assetLibraryTab').classList.remove('active'); $('consoleTab').classList.remove('active'); };
+$('assetLibraryTab').onclick=()=>{ $('contentWorkspace').classList.remove('drawer-collapsed'); $('projectView').hidden=true; $('assetLibraryView').hidden=false; $('consoleView').hidden=true; $('projectTab').classList.remove('active'); $('assetLibraryTab').classList.add('active'); $('consoleTab').classList.remove('active'); renderAssetLibrary(); };
+$('consoleTab').onclick=()=>{ $('contentWorkspace').classList.remove('drawer-collapsed'); $('projectView').hidden=true; $('assetLibraryView').hidden=true; $('consoleView').hidden=false; $('consoleTab').classList.add('active'); $('projectTab').classList.remove('active'); $('assetLibraryTab').classList.remove('active'); };
 $('contentDrawer').onclick=()=>{ const collapsed=$('contentWorkspace').classList.toggle('drawer-collapsed'); $('bottomSplitter').classList.toggle('drawer-collapsed',collapsed); status(collapsed?'Content Drawer ditutup.':'Content Drawer dibuka.'); };
 $('outputLog').onclick=()=>{ $('contentWorkspace').classList.remove('drawer-collapsed'); $('consoleTab').click(); status('Output Log dibuka.'); };
 $('clearConsole').onclick=()=>{ consoleEntries.length=0; $('consoleOutput').replaceChildren(); $('consoleCount').textContent='0'; };
@@ -432,18 +538,21 @@ const menuDefinitions = {
   ],
   assets:[
     ['Open Project Folder…',()=>$('openProject').click()],['Refresh Project',()=>$('refreshFiles').click()],
+    ['Import OBJ Model…',()=>{setWorkspace('modeling');$('modelImportObj').click();}],
+    ['Feature Pack Manager',()=>{setWorkspace('build');$('packManagerPanel').scrollIntoView({behavior:'smooth',block:'start'});}],
     ['Create Folder',()=>{ $('projectTab').click(); $('entryName').focus(); status('Isi nama lalu tekan + Folder.'); }],
     ['Create File',()=>{ $('projectTab').click(); $('entryName').focus(); status('Isi nama lalu tekan + File.'); }]
   ],
   gameObject:[
     ['Cube',()=>addObject('box')],['Sphere',()=>addObject('sphere')],['Cylinder',()=>addObject('cylinder')],
     ['Plane',()=>addObject('plane')],['Cone',()=>addObject('cone')],['Torus',()=>addObject('torus')],
-    ['Point Light',()=>addObject('pointLight')],['Directional Light',()=>addObject('directionalLight')]
+    ['Point Light',()=>addObject('pointLight')],['Directional Light',()=>addObject('directionalLight')],['Camera',()=>$('cameraActor').click()],['Terrain',()=>$('terrainActor').click()]
   ],
   component:[
     ['Rigidbody',()=>addComponent('rigidbody')],['Controller',()=>addComponent('controller')],['Script',()=>addComponent('script')]
   ],
   window:[
+    ['Level Workspace',()=>setWorkspace('level')],['Modeling Workspace',()=>setWorkspace('modeling')],['Animation Workspace',()=>setWorkspace('animation')],['Build Workspace',()=>setWorkspace('build')],
     ['Content Browser',()=>$('projectTab').click()],['Output Log',()=>$('consoleTab').click()],
     ['Toggle World Outliner',()=>setPanelCollapsed('left',!editorLayout.outlinerCollapsed)],
     ['Toggle Details',()=>setPanelCollapsed('right',!editorLayout.detailsCollapsed)],
@@ -451,7 +560,7 @@ const menuDefinitions = {
     ['Toolchain Manager',()=>{ $('scanToolchains').scrollIntoView({behavior:'smooth',block:'center'}); status('Toolchain Manager ditampilkan.'); }]
   ],
   help:[
-    ['About RAVS Engine',()=>status('RAVS Engine 3D v0.8.0 · resizable desktop workspace.')],
+    ['About RAVS Engine',()=>status('RAVS Engine 3D v1.0.0 · modeling, camera, OBJ assets, feature packs and desktop workspace.')],
     ['Controls',()=>status('Q View · W Move · E Rotate · R Scale · F Focus · Ctrl+S Save · Ctrl+D Duplicate')]
   ]
 };
@@ -467,7 +576,25 @@ function openMenu(button,key){
 document.querySelectorAll('.menu-item').forEach(button=>button.onclick=e=>{e.stopPropagation();if(!menuPopup.hidden&&menuPopup.dataset.menu===button.dataset.menu){closeMenu();return;}menuPopup.dataset.menu=button.dataset.menu;openMenu(button,button.dataset.menu);});
 document.addEventListener('pointerdown',e=>{if(!menuPopup.hidden&&!menuPopup.contains(e.target)&&!e.target.classList.contains('menu-item'))closeMenu();});
 $('hierarchyCreate').onclick=e=>{ const source=document.querySelector('[data-menu="gameObject"]'); openMenu(source,'gameObject'); menuPopup.style.left=e.currentTarget.getBoundingClientRect().left+'px'; menuPopup.style.top=e.currentTarget.getBoundingClientRect().bottom+'px'; };
-updatePlayUI(); refresh(); requestAnimationFrame(frame);
+$('workspaceLevel').onclick=()=>setWorkspace('level');
+$('workspaceModeling').onclick=()=>setWorkspace('modeling');
+$('workspaceAnimation').onclick=()=>setWorkspace('animation');
+$('workspaceBuild').onclick=()=>setWorkspace('build');
+$('modelAdd').onclick=()=>{if(backup)return;const o=createObject($('modelPrimitive').value);scene.objects.push(o);selected=o.id;record();refresh();status(o.name+' ditambahkan dari Modeling toolbar.');};
+$('modelImportObj').onchange=async e=>{
+  try{
+    const file=e.target.files?.[0];if(!file)return;
+    if(file.size>4_000_000)throw Error('OBJ maksimal 4 MB untuk embedded scene.');
+    const data=await file.text();if(!/(^|\n)\s*v\s+[-+0-9.]/.test(data))throw Error('File tidak terlihat seperti OBJ yang valid.');
+    const o=createObject('model');o.name=file.name.replace(/\.obj$/i,'')||'Imported Model';o.asset={format:'obj',name:file.name.slice(0,160),data};scene.objects.push(o);selected=o.id;record();refresh();status('OBJ '+file.name+' berhasil diimpor.');
+  }catch(error){status('Import OBJ gagal: '+error.message);}finally{e.target.value='';}
+};
+$('modelDuplicate').onclick=()=>{if(backup)return;const o=scene.objects.find(item=>item.id===selected&&(MODEL_KINDS.includes(item.kind)||MODEL_ASSET_KINDS.includes(item.kind)));if(!o){status('Pilih mesh/model untuk Duplicate.');return;}const n=structuredClone(o);n.id=crypto.randomUUID();n.name+=' Copy';n.position.x+=1;scene.objects.push(n);selected=n.id;record();refresh();};
+$('modelCenter').onclick=()=>{const o=selectedModel();if(!o||backup)return;o.position.x=0;o.position.z=0;record();refresh();status(o.name+' dipusatkan ke X/Z 0.');};
+$('modelGround').onclick=()=>{const o=selectedModel();if(!o||backup)return;o.position.y=estimatedHalfHeight(o);record();refresh();status(o.name+' ditempatkan di ground.');};
+$('modelResetRotation').onclick=()=>{const o=selectedModel();if(!o||backup)return;o.rotation={x:0,y:0,z:0};record();refresh();};
+$('modelResetScale').onclick=()=>{const o=selectedModel();if(!o||backup)return;o.scale={x:1,y:1,z:1};record();refresh();};
+setWorkspace('level'); updatePlayUI(); refresh(); requestAnimationFrame(frame);
 
 
 let detectedToolchains = [];
@@ -525,6 +652,7 @@ $('featurePackImport').onchange=async e=>{
   }catch(error){status('Import pack gagal: '+error.message);} finally {e.target.value='';}
 };
 renderPackManager();
+renderAssetLibrary();
 syncDesktopPacks();
 
 const toolchainNames = { lua:'Lua', c:'C', cpp:'C++', csharp:'C#', java:'Java' };

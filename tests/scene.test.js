@@ -81,3 +81,26 @@ test('cyclic rig hierarchy and duplicate animation clip ids are rejected', () =>
   p.rig=createHumanoidRig();p.animation=createAnimationController();p.animation.clips[1].id=p.animation.clips[0].id;
   assert.throws(()=>parseScene(JSON.stringify(s)));
 });
+
+test('camera actor and imported OBJ asset roundtrip', () => {
+  const s=demoScene();
+  const camera=createObject('camera');camera.camera.fov=75;s.objects.push(camera);
+  const model=createObject('model');model.asset={format:'obj',name:'triangle.obj',data:'v 0 0 0\nv 1 0 0\nv 0 1 0\nf 1 2 3\n'};s.objects.push(model);
+  const loaded=parseScene(JSON.stringify(s));
+  assert.equal(loaded.objects.at(-2).camera.fov,75);
+  assert.equal(loaded.objects.at(-1).asset.name,'triangle.obj');
+});
+test('modeled primitive geometry and modifiers roundtrip',()=>{
+  const s=demoScene(),box=s.objects[0];
+  box.geometry.width=3;box.geometry.heightSegments=4;box.modifiers.twist={enabled:true,angle:90,axis:'y'};
+  const loaded=parseScene(JSON.stringify(s));
+  assert.equal(loaded.objects[0].geometry.width,3);
+  assert.equal(loaded.objects[0].geometry.heightSegments,4);
+  assert.equal(loaded.objects[0].modifiers.twist.angle,90);
+});
+
+test('terrain actor configuration roundtrip',()=>{
+  const s=demoScene(),terrain=createObject('terrain');terrain.terrain={width:80,depth:60,segments:32,height:8,frequency:.08,seed:42};s.objects.push(terrain);
+  const loaded=parseScene(JSON.stringify(s));const t=loaded.objects.at(-1);
+  assert.equal(t.kind,'terrain');assert.equal(t.terrain.width,80);assert.equal(t.terrain.seed,42);
+});

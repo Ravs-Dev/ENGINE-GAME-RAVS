@@ -88,3 +88,28 @@ body.viewport-maximized #levelEditorLayout{height:calc(100vh - 110px);min-height
 .pack-manager-panel{padding:12px 16px;background:#11181e;border-top:1px solid #34414c;border-bottom:1px solid #34414c}.pack-manager-panel>.panel-title-row{align-items:flex-start}.pack-manager-panel h2{margin:0 0 4px}.pack-manager-panel p{margin:0}.pack-actions{display:flex;gap:6px;align-items:center}.pack-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:8px;margin-top:10px}.pack-card{padding:10px;border:1px solid #33414b;border-radius:4px;background:#151d24}.pack-card.required{border-color:#a56a28}.pack-card.ready{border-color:#287c69}.pack-card-head{display:flex;align-items:center;justify-content:space-between;gap:8px}.pack-card-head strong{font-size:12px;letter-spacing:.2px;margin:0}.pack-state{font-size:10px;padding:2px 6px;border-radius:999px;background:#242f38;color:#9db0c0}.pack-card.ready .pack-state{background:#173d35;color:#a9ead8}.pack-card.required .pack-state{background:#4a3217;color:#ffd18e}.pack-card small{display:block;margin-top:4px;color:#6f8596}.pack-card p{min-height:44px;line-height:1.45}.pack-card-actions{display:flex;gap:6px;flex-wrap:wrap}.pack-card-actions button{padding:5px 8px;font-size:11px}.bone-row{padding:3px 6px;margin:2px 0;background:#161f25;border-left:2px solid #467083;font-size:11px}.animation-clip{display:grid;grid-template-columns:70px 1fr;gap:6px;padding:5px 0;font-size:11px}.animation-clip strong{font-size:11px;letter-spacing:0;margin:0}.animation-clip span{color:#8497a8;overflow-wrap:anywhere}
 
 .pack-install-note{align-self:center;color:#7890a1;font-size:10px}.pack-card.ready .pack-install-note{color:#8cd6c4}
+
+/* v1.0 modeling workspace */
+.workspace-tabs{display:flex;gap:2px;margin-left:8px;padding:2px;background:#12181d;border:1px solid #34414c;border-radius:4px}
+.workspace-tabs button{padding:4px 10px;border:0;background:transparent;color:#91a4b5;font-size:11px}
+.workspace-tabs button:hover{background:#24313a;color:#fff}
+.workspace-tabs button.active{background:#0b7895;color:#fff}
+.modeling-toolbar{display:flex;align-items:center;gap:5px;flex-wrap:wrap;padding:5px 6px;margin-bottom:5px;background:#16232b;border:1px solid #38505d;border-radius:3px}
+.modeling-toolbar strong{font-size:11px;letter-spacing:.7px;color:#bdeeff;margin:0 4px}
+.modeling-toolbar select,.modeling-toolbar button{font-size:11px;padding:5px 7px;background:#202b33;border-color:#3c4d58}
+.toolbar-separator{width:1px;height:20px;background:#41505b;margin:0 2px}
+.modeling-section{padding:7px;margin:5px 0 8px;border:1px solid #32434e;background:#141d23;border-radius:4px}
+.modeling-section h3{margin:0 0 7px;color:#b8ddea;font-size:11px;letter-spacing:.6px}
+.modeling-grid{display:grid;grid-template-columns:1fr 1fr;gap:5px}
+.modeling-grid label{margin:0}
+.modifier-card{padding:7px;margin:6px 0;border:1px solid #34434d;background:#11191e;border-radius:4px}
+.modifier-card .modifier-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px}
+.modifier-card .modifier-head strong{font-size:11px;letter-spacing:.4px;margin:0}
+.workspace-build-focus #packManagerPanel{outline:2px solid #0b7895;outline-offset:-2px}
+@media(max-width:850px){.workspace-tabs{display:none}.modeling-toolbar{display:none!important}}
+
+.asset-library-toolbar{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px;padding:7px 9px;background:#11191f;border:1px solid #32424d;border-radius:4px}.asset-library-toolbar strong{font-size:12px}.asset-library-toolbar span{font-size:10px;color:#7f94a5}
+.asset-library-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;height:100%}.asset-library-grid section{min-width:0;padding:8px;background:#11181e;border:1px solid #303d46;border-radius:4px;overflow:auto}.asset-library-grid h3{margin:0 0 8px;font-size:11px;color:#b8ddea}
+.asset-card{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px;align-items:center;margin:5px 0;padding:7px;background:#182129;border:1px solid #34434e;border-radius:4px}.asset-card strong{font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.asset-card small{display:block;color:#718696;font-size:9px}.asset-card-actions{display:flex;gap:4px}.asset-card-actions button{padding:4px 6px;font-size:10px}
+#assetLibraryView{height:calc(100% - 36px);overflow:auto}
+@media(max-width:850px){.asset-library-grid{grid-template-columns:1fr}}

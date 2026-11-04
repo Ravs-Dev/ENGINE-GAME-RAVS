@@ -1,5 +1,25 @@
 # Changelog
 
+## 1.0.0
+
+- Add Level, Modeling, Animation and Build workspace tabs.
+- Add parametric modeling controls for Cube, Sphere, Cylinder, Plane, Cone and Torus.
+- Add real-time Twist, Taper and Mirror geometry modifiers with X/Y/Z axis control.
+- Rebuild modeled geometry live in the editor and preserve it in exported games.
+- Add Modeling toolbar actions for primitive creation, duplicate, center, drop-to-ground and transform resets.
+- Add Camera Actors with FOV, near/far clipping and Main Camera selection.
+- Use the active Main Camera in built/exported games, with orbit camera fallback when none exists.
+- Add embedded OBJ import from the Modeling workspace.
+- Add procedural Terrain Actors with editable size, resolution, height, frequency and seed.
+- Render imported OBJ models in both the editor viewport and exported game runtime.
+- Add Camera Preview from Camera Actor inspector.
+- Add editable Animation Clip controls for rigged objects.
+- Add reusable Prefab library with instantiate/delete actions.
+- Add reusable Material Preset library with apply/delete actions.
+- Add dedicated Assets tab in the lower workspace.
+- Add regression tests for modeling geometry/modifier normalization and reusable asset libraries.
+
+
 ## 0.9.2
 
 - Move RAVS splash branding out of the editor Play/Simulate flow.

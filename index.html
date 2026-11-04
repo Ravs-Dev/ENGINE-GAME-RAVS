@@ -17,6 +17,12 @@
     <button class="menu-item" data-menu="component">Component</button>
     <button class="menu-item" data-menu="window">Window</button>
     <button class="menu-item" data-menu="help">Help</button>
+    <div class="workspace-tabs" aria-label="Editor workspace">
+      <button id="workspaceLevel" class="active">Level</button>
+      <button id="workspaceModeling">Modeling</button>
+      <button id="workspaceAnimation">Animation</button>
+      <button id="workspaceBuild">Build</button>
+    </div>
     <span class="menu-spacer"></span><span id="modeBadge">Edit Mode</span>
   </nav>
   <div id="engineMenuPopup" class="engine-menu-popup" hidden></div>
@@ -47,7 +53,8 @@
       <div class="tools"><button id="box">+ Cube</button><button id="sphere">+ Sphere</button></div>
       <div class="tools"><button id="plane">+ Plane</button><button id="cone">+ Cone</button></div>
       <div class="tools"><button id="torus">+ Torus</button><button id="pointLight">+ Point Light</button></div>
-      <button id="directionalLight">+ Directional Light</button>
+      <div class="tools"><button id="directionalLight">+ Directional Light</button><button id="cameraActor">+ Camera</button></div>
+      <button id="terrainActor">+ Terrain</button>
       <label class="search">Cari objek<input id="search" type="search" placeholder="Nama objek"></label>
       <button id="cylinder">+ Cylinder</button>
       <div id="hierarchy"></div>
@@ -59,6 +66,13 @@
     <div id="leftSplitter" class="workspace-splitter vertical" role="separator" tabindex="0" aria-label="Resize World Outliner" aria-orientation="vertical" aria-valuemin="160" aria-valuemax="480" aria-valuenow="285"></div>
     <section class="viewport">
       <div class="viewbar"><div class="editor-tabs"><button id="sceneTab" class="active">Scene</button><button id="gameTab">Game</button></div><span>Perspektif · WebGL 2</span></div>
+      <div id="modelingToolbar" class="modeling-toolbar" hidden>
+        <strong>Modeling</strong>
+        <select id="modelPrimitive"><option value="box">Cube</option><option value="sphere">Sphere</option><option value="cylinder">Cylinder</option><option value="plane">Plane</option><option value="cone">Cone</option><option value="torus">Torus</option></select>
+        <button id="modelAdd">+ Add</button><label class="button model-import">Import OBJ<input id="modelImportObj" type="file" accept=".obj,text/plain" hidden></label><button id="modelDuplicate">Duplicate</button>
+        <span class="toolbar-separator"></span>
+        <button id="modelCenter">Center</button><button id="modelGround">Drop to Ground</button><button id="modelResetRotation">Reset Rotation</button><button id="modelResetScale">Reset Scale</button>
+      </div>
       <div class="unreal-viewport-toolbar" aria-label="Viewport controls">
         <select id="cameraView" title="View"><option value="perspective">Perspective</option><option value="front">Front</option><option value="back">Back</option><option value="left">Left</option><option value="right">Right</option><option value="top">Top</option><option value="bottom">Bottom</option></select>
         <select id="shadingMode" title="Viewport shading"><option value="lit">Lit</option><option value="unlit">Unlit</option><option value="wireframe">Wireframe</option></select>
@@ -122,11 +136,15 @@
     </aside>
     <div id="contentSplitter" class="workspace-splitter vertical" role="separator" tabindex="0" aria-label="Resize Content Browser file tree" aria-orientation="vertical" aria-valuemin="220" aria-valuemax="620" aria-valuenow="320"></div>
     <section class="code-editor">
-      <div class="bottom-tabs"><button id="projectTab" class="active">Project</button><button id="consoleTab">Console <span id="consoleCount">0</span></button></div>
+      <div class="bottom-tabs"><button id="projectTab" class="active">Project</button><button id="assetLibraryTab">Assets</button><button id="consoleTab">Console <span id="consoleCount">0</span></button></div>
       <div id="projectView">
         <div class="code-toolbar"><strong id="filePath">Pilih file teks atau script</strong><button id="saveFile">Simpan File</button></div>
         <textarea id="code" aria-label="Editor isi file" spellcheck="false" disabled placeholder="Pilih file dari Project Files, atau buat file baru."></textarea>
         <p>File teks UTF-8 maksimal 1 MB. Script bisa diedit dan disimpan; eksekusi script game belum tersedia. Ctrl+S menyimpan file aktif.</p>
+      </div>
+      <div id="assetLibraryView" hidden>
+        <div class="asset-library-toolbar"><strong>Reusable Assets</strong><span>Prefab & Material Presets</span></div>
+        <div class="asset-library-grid"><section><h3>Prefabs</h3><div id="prefabList"></div></section><section><h3>Materials</h3><div id="materialPresetList"></div></section></div>
       </div>
       <div id="consoleView" hidden>
         <div class="console-toolbar"><strong>Console</strong><button id="clearConsole">Clear</button></div>
