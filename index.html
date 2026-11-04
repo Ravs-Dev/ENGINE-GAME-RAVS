@@ -17,6 +17,12 @@
     <button class="menu-item" data-menu="component">Component</button>
     <button class="menu-item" data-menu="window">Window</button>
     <button class="menu-item" data-menu="help">Help</button>
+    <div class="workspace-tabs" aria-label="Editor workspace">
+      <button id="workspaceLevel" class="active">Level</button>
+      <button id="workspaceModeling">Modeling</button>
+      <button id="workspaceAnimation">Animation</button>
+      <button id="workspaceBuild">Build</button>
+    </div>
     <span class="menu-spacer"></span><span id="modeBadge">Edit Mode</span>
   </nav>
   <div id="engineMenuPopup" class="engine-menu-popup" hidden></div>
@@ -59,6 +65,13 @@
     <div id="leftSplitter" class="workspace-splitter vertical" role="separator" tabindex="0" aria-label="Resize World Outliner" aria-orientation="vertical" aria-valuemin="160" aria-valuemax="480" aria-valuenow="285"></div>
     <section class="viewport">
       <div class="viewbar"><div class="editor-tabs"><button id="sceneTab" class="active">Scene</button><button id="gameTab">Game</button></div><span>Perspektif · WebGL 2</span></div>
+      <div id="modelingToolbar" class="modeling-toolbar" hidden>
+        <strong>Modeling</strong>
+        <select id="modelPrimitive"><option value="box">Cube</option><option value="sphere">Sphere</option><option value="cylinder">Cylinder</option><option value="plane">Plane</option><option value="cone">Cone</option><option value="torus">Torus</option></select>
+        <button id="modelAdd">+ Add</button><button id="modelDuplicate">Duplicate</button>
+        <span class="toolbar-separator"></span>
+        <button id="modelCenter">Center</button><button id="modelGround">Drop to Ground</button><button id="modelResetRotation">Reset Rotation</button><button id="modelResetScale">Reset Scale</button>
+      </div>
       <div class="unreal-viewport-toolbar" aria-label="Viewport controls">
         <select id="cameraView" title="View"><option value="perspective">Perspective</option><option value="front">Front</option><option value="back">Back</option><option value="left">Left</option><option value="right">Right</option><option value="top">Top</option><option value="bottom">Bottom</option></select>
         <select id="shadingMode" title="Viewport shading"><option value="lit">Lit</option><option value="unlit">Unlit</option><option value="wireframe">Wireframe</option></select>
