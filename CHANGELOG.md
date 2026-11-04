@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.8.0
+
+- Add draggable splitters between World Outliner, Viewport, Details, and the Content Browser/Output Log area.
+- Persist editor panel sizes locally and restore them at startup.
+- Add collapsible World Outliner and Details panels with edge controls.
+- Add Reset Layout from the bottom dock and Window menu.
+- Add keyboard-accessible splitters with arrow-key resizing and Home-to-reset.
+- Keep viewport rendering responsive while panels are resized.
+
+
 ## 0.7.0
 
 - Rework the editor into an Unreal-inspired Level Editor layout while retaining RAVS branding.
