@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { TransformControls } from 'three/addons/controls/TransformControls.js';
 import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { MESH_KINDS, LIGHT_KINDS, CAMERA_KINDS, MODEL_ASSET_KINDS } from './scene.js';
 import { modelingSignature, normalizeGeometry, normalizeModifiers } from './modeling.js';
 
@@ -27,7 +28,15 @@ function applyModifiers(geometry, rawModifiers){
     }
     position.setXYZ(i,p[0],p[1],p[2]);
   }
-  position.needsUpdate=true;geometry.computeVertexNormals();geometry.computeBoundingBox();geometry.computeBoundingSphere();return geometry;
+  position.needsUpdate=true;geometry.computeVertexNormals();geometry.computeBoundingBox();geometry.computeBoundingSphere();
+  if(modifiers.mirror.enabled){
+    const mirrored=geometry.clone(),axis=modifiers.mirror.axis,scale=new THREE.Matrix4().makeScale(axis==='x'?-1:1,axis==='y'?-1:1,axis==='z'?-1:1);
+    const translate=new THREE.Matrix4().makeTranslation(axis==='x'?2*modifiers.mirror.offset:0,axis==='y'?2*modifiers.mirror.offset:0,axis==='z'?2*modifiers.mirror.offset:0);
+    mirrored.applyMatrix4(translate.multiply(scale));
+    const merged=mergeGeometries([geometry,mirrored],false);
+    if(merged){geometry.dispose();mirrored.dispose();geometry=merged;geometry.computeVertexNormals();geometry.computeBoundingBox();geometry.computeBoundingSphere();}else mirrored.dispose();
+  }
+  return geometry;
 }
 
 function geometryFor(object){
