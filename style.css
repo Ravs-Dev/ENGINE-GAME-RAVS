@@ -58,3 +58,29 @@ body.layout-resizing.horizontal-resize{cursor:row-resize}
   #levelEditorLayout #outlinerPanel,#levelEditorLayout #detailsPanel{display:block!important}
   #contentWorkspace{height:auto!important;max-height:none}
 }
+
+/* v0.8 advanced workspace resizing */
+:root{--ravs-content-left:320px;--ravs-toolchain-height:112px}
+#contentWorkspace{grid-template-columns:var(--ravs-content-left) 6px minmax(0,1fr)}
+#contentSplitter{height:auto;width:6px}
+#toolchainPanel{height:var(--ravs-toolchain-height);min-height:72px;max-height:280px;overflow:auto}
+#toolchainSplitter{display:block}
+#toolchainPanel.collapsed-panel{display:none}
+#toolchainSplitter.collapsed-edge::before{content:"⌃";position:absolute;left:50%;top:-2px;transform:translateX(-50%);background:#0b7895;color:#fff;border-radius:3px;padding:1px 8px;font-size:10px}
+#levelEditorLayout.viewport-maximized{grid-template-columns:0 0 minmax(0,1fr) 0 0}
+#levelEditorLayout.viewport-maximized #outlinerPanel,
+#levelEditorLayout.viewport-maximized #detailsPanel,
+#levelEditorLayout.viewport-maximized #leftSplitter,
+#levelEditorLayout.viewport-maximized #rightSplitter{display:none}
+body.viewport-maximized #toolchainPanel,
+body.viewport-maximized #toolchainSplitter,
+body.viewport-maximized #contentWorkspace,
+body.viewport-maximized #bottomSplitter{display:none!important}
+body.viewport-maximized #levelEditorLayout{height:calc(100vh - 110px);min-height:520px}
+#maximizeViewport.active{background:#0b7895;border-color:#36c9ee}
+.dock-layout-label{display:flex;align-items:center;gap:6px;margin:0;color:#90a5b7;font-size:11px}.dock-layout-label select{padding:4px 7px;font-size:11px}
+@media(max-width:850px){
+ #contentWorkspace{grid-template-columns:1fr!important}
+ #contentSplitter,#toolchainSplitter{display:none!important}
+ #toolchainPanel{height:auto!important;max-height:none}
+}
