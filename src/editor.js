@@ -6,6 +6,7 @@ import { createObject, createScene, createHumanoidRig, createAnimationController
 import { History } from './history.js';
 import { createViewport } from './viewport.js';
 import { FEATURE_PACKS, readPackState, writePackState, isPackReady } from './feature-packs.js';
+import { MODEL_KINDS, defaultGeometry, defaultModifiers, normalizeGeometry, normalizeModifiers } from './modeling.js';
 const $ = id => document.getElementById(id);
 const keys = new Set(), storageKey = 'ravs.scene.3d.v2';
 const layoutStorageKey = 'ravs.layout.v1';
@@ -15,7 +16,7 @@ try {
   const savedLayout = JSON.parse(localStorage.getItem(layoutStorageKey) || 'null');
   if (savedLayout && typeof savedLayout === 'object') editorLayout = {...defaultLayout,...savedLayout};
 } catch { editorLayout = {...defaultLayout}; }
-let scene = demoScene(), selected = scene.objects[1].id, backup = null, last = 0, paused = false, stepOnce = false, activeView = 'scene', simulating = false, fpsTime = performance.now(), fpsFrames = 0;
+let scene = demoScene(), selected = scene.objects[1].id, backup = null, last = 0, paused = false, stepOnce = false, activeView = 'scene', simulating = false, fpsTime = performance.now(), fpsFrames = 0, workspaceMode='level';
 const consoleEntries = [];
 function pushConsole(text, level='log') {
   consoleEntries.push({time:new Date().toLocaleTimeString(),text:String(text),level});
@@ -94,6 +95,57 @@ function field(parent, label, target, key, type, min, max) {
   };
   row.append(input); parent.append(row);
 }
+
+function appendSelect(parent,label,target,key,options){
+  const row=document.createElement('label');row.textContent=label;const select=document.createElement('select');
+  for(const value of options){const option=document.createElement('option');option.value=value;option.textContent=value.toUpperCase();select.append(option);}
+  select.value=target[key];select.disabled=!!backup;select.onchange=()=>{target[key]=select.value;record();refresh();};row.append(select);parent.append(row);
+}
+function modelingField(parent,label,target,key,min,max,stepValue=.1){
+  const row=document.createElement('label'),input=document.createElement('input');row.textContent=label;input.type='number';input.value=target[key];input.min=min;input.max=max;input.step=stepValue;input.disabled=!!backup;
+  input.onchange=()=>{const value=Number(input.value);if(!Number.isFinite(value))return;target[key]=Math.max(min,Math.min(max,value));record();refresh();};row.append(input);parent.append(row);
+}
+function appendModelingInspector(inspector,o){
+  if(!MODEL_KINDS.includes(o.kind))return;
+  o.geometry=normalizeGeometry(o.kind,o.geometry??defaultGeometry(o.kind));o.modifiers=normalizeModifiers(o.modifiers??defaultModifiers());
+  const section=document.createElement('section');section.className='modeling-section';
+  const title=document.createElement('h3');title.textContent='Modeling · Geometry';section.append(title);
+  const grid=document.createElement('div');grid.className='modeling-grid';section.append(grid);
+  const specs={
+    box:[['Width','width',.01,1000,.1],['Height','height',.01,1000,.1],['Depth','depth',.01,1000,.1],['Width Segments','widthSegments',1,64,1],['Height Segments','heightSegments',1,64,1],['Depth Segments','depthSegments',1,64,1]],
+    sphere:[['Radius','radius',.01,1000,.1],['Width Segments','widthSegments',3,128,1],['Height Segments','heightSegments',2,128,1]],
+    cylinder:[['Radius Top','radiusTop',0,1000,.1],['Radius Bottom','radiusBottom',0,1000,.1],['Height','height',.01,1000,.1],['Radial Segments','radialSegments',3,128,1],['Height Segments','heightSegments',1,64,1]],
+    plane:[['Width','width',.01,1000,.1],['Height','height',.01,1000,.1],['Width Segments','widthSegments',1,128,1],['Height Segments','heightSegments',1,128,1]],
+    cone:[['Radius','radius',.01,1000,.1],['Height','height',.01,1000,.1],['Radial Segments','radialSegments',3,128,1],['Height Segments','heightSegments',1,64,1]],
+    torus:[['Radius','radius',.01,1000,.1],['Tube','tube',.005,1000,.05],['Radial Segments','radialSegments',3,64,1],['Tubular Segments','tubularSegments',3,256,1]]
+  };
+  for(const [label,key,min,max,stepValue] of specs[o.kind])modelingField(grid,label,o.geometry,key,min,max,stepValue);
+  const reset=document.createElement('button');reset.textContent='Reset Geometry';reset.disabled=!!backup;reset.onclick=()=>{o.geometry=defaultGeometry(o.kind);o.modifiers=defaultModifiers();record();refresh();status('Geometry '+o.name+' di-reset.');};section.append(reset);
+  const twist=document.createElement('div');twist.className='modifier-card';const th=document.createElement('div');th.className='modifier-head';const ts=document.createElement('strong');ts.textContent='Twist Modifier';const te=document.createElement('input');te.type='checkbox';te.checked=o.modifiers.twist.enabled;te.disabled=!!backup;te.onchange=()=>{o.modifiers.twist.enabled=te.checked;record();refresh();};th.append(ts,te);twist.append(th);
+  const tg=document.createElement('div');tg.className='modeling-grid';modelingField(tg,'Angle °',o.modifiers.twist,'angle',-1080,1080,5);appendSelect(tg,'Axis',o.modifiers.twist,'axis',['x','y','z']);twist.append(tg);section.append(twist);
+  const taper=document.createElement('div');taper.className='modifier-card';const ph=document.createElement('div');ph.className='modifier-head';const ps=document.createElement('strong');ps.textContent='Taper Modifier';const pe=document.createElement('input');pe.type='checkbox';pe.checked=o.modifiers.taper.enabled;pe.disabled=!!backup;pe.onchange=()=>{o.modifiers.taper.enabled=pe.checked;record();refresh();};ph.append(ps,pe);taper.append(ph);
+  const pg=document.createElement('div');pg.className='modeling-grid';modelingField(pg,'Amount',o.modifiers.taper,'amount',-.95,4,.05);appendSelect(pg,'Axis',o.modifiers.taper,'axis',['x','y','z']);taper.append(pg);section.append(taper);
+  inspector.append(section);
+}
+function selectedModel(){return scene.objects.find(o=>o.id===selected&&MODEL_KINDS.includes(o.kind));}
+function estimatedHalfHeight(o){
+  if(!o)return 0;
+  const g=normalizeGeometry(o.kind,o.geometry);
+  const base=o.kind==='sphere'?g.radius:o.kind==='cylinder'||o.kind==='cone'?g.height/2:o.kind==='torus'?g.radius+g.tube:o.kind==='plane'?.01:g.height/2;
+  return base*Math.abs(o.scale.y);
+}
+function setWorkspace(mode){
+  workspaceMode=['level','modeling','animation','build'].includes(mode)?mode:'level';
+  for(const name of ['Level','Modeling','Animation','Build']) $('workspace'+name)?.classList.toggle('active',workspaceMode===name.toLowerCase());
+  $('modelingToolbar').hidden=workspaceMode!=='modeling';
+  document.body.classList.toggle('workspace-build-focus',workspaceMode==='build');
+  if(workspaceMode==='build')$('packManagerPanel')?.scrollIntoView({behavior:'smooth',block:'start'});
+  if(workspaceMode==='animation'){const o=scene.objects.find(o=>o.id===selected);status(o?.rig?'Animation workspace · '+o.name+' · '+o.rig.bones.length+' bones':'Animation workspace · pilih object yang memiliki Rig/Armature.');}
+  else if(workspaceMode==='modeling')status('Modeling workspace · pilih mesh lalu edit Geometry/Modifiers di Details.');
+  else if(workspaceMode==='build')status('Build workspace · periksa feature pack dan toolchain sebelum export.');
+  else status('Level workspace.');
+  refresh();
+}
 function refresh() {
   const hierarchy = $('hierarchy'), inspector = $('inspector'); hierarchy.replaceChildren(); inspector.replaceChildren();
   for (const o of scene.objects.filter(o => o.name.toLowerCase().includes($('search').value.toLowerCase()))) {
@@ -111,6 +163,7 @@ function refresh() {
     field(inspector, 'Tag', o, 'tag', 'text');
     field(inspector, 'Layer', o, 'layer', 'number', 0, 31);
     field(inspector, 'Warna', o, 'color', 'color');
+    appendModelingInspector(inspector,o);
     if (LIGHT_KINDS.includes(o.kind)) {
       const lt = document.createElement('h2'); lt.textContent = 'Light'; inspector.append(lt);
       field(inspector, 'Color', o.light, 'color', 'color');
@@ -467,7 +520,17 @@ function openMenu(button,key){
 document.querySelectorAll('.menu-item').forEach(button=>button.onclick=e=>{e.stopPropagation();if(!menuPopup.hidden&&menuPopup.dataset.menu===button.dataset.menu){closeMenu();return;}menuPopup.dataset.menu=button.dataset.menu;openMenu(button,button.dataset.menu);});
 document.addEventListener('pointerdown',e=>{if(!menuPopup.hidden&&!menuPopup.contains(e.target)&&!e.target.classList.contains('menu-item'))closeMenu();});
 $('hierarchyCreate').onclick=e=>{ const source=document.querySelector('[data-menu="gameObject"]'); openMenu(source,'gameObject'); menuPopup.style.left=e.currentTarget.getBoundingClientRect().left+'px'; menuPopup.style.top=e.currentTarget.getBoundingClientRect().bottom+'px'; };
-updatePlayUI(); refresh(); requestAnimationFrame(frame);
+$('workspaceLevel').onclick=()=>setWorkspace('level');
+$('workspaceModeling').onclick=()=>setWorkspace('modeling');
+$('workspaceAnimation').onclick=()=>setWorkspace('animation');
+$('workspaceBuild').onclick=()=>setWorkspace('build');
+$('modelAdd').onclick=()=>{if(backup)return;const o=createObject($('modelPrimitive').value);scene.objects.push(o);selected=o.id;record();refresh();status(o.name+' ditambahkan dari Modeling toolbar.');};
+$('modelDuplicate').onclick=()=>{if(backup)return;const o=selectedModel();if(!o){status('Pilih mesh untuk Duplicate.');return;}const n=structuredClone(o);n.id=crypto.randomUUID();n.name+=' Copy';n.position.x+=1;scene.objects.push(n);selected=n.id;record();refresh();};
+$('modelCenter').onclick=()=>{const o=selectedModel();if(!o||backup)return;o.position.x=0;o.position.z=0;record();refresh();status(o.name+' dipusatkan ke X/Z 0.');};
+$('modelGround').onclick=()=>{const o=selectedModel();if(!o||backup)return;o.position.y=estimatedHalfHeight(o);record();refresh();status(o.name+' ditempatkan di ground.');};
+$('modelResetRotation').onclick=()=>{const o=selectedModel();if(!o||backup)return;o.rotation={x:0,y:0,z:0};record();refresh();};
+$('modelResetScale').onclick=()=>{const o=selectedModel();if(!o||backup)return;o.scale={x:1,y:1,z:1};record();refresh();};
+setWorkspace('level'); updatePlayUI(); refresh(); requestAnimationFrame(frame);
 
 
 let detectedToolchains = [];
