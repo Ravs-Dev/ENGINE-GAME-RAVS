@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { createObject, demoScene, parseScene, step } from '../src/scene.js';
+import { createObject, createHumanoidRig, createAnimationController, demoScene, parseScene, step } from '../src/scene.js';
 test('3D scene roundtrip preserves XYZ transforms and components', () => {
   const s = demoScene(); assert.deepEqual(parseScene(JSON.stringify(s)), s);
 });
@@ -59,4 +59,17 @@ test('legacy v2 scenes receive new component defaults', () => {
   assert.equal(loaded.objects[0].active, true);
   assert.equal(loaded.objects[0].material.roughness, 0.65);
   assert.deepEqual(loaded.objects[0].scripts, []);
+});
+
+test('humanoid rig, animation controller and required packs roundtrip', () => {
+  const s=demoScene(), p=s.objects[1];p.rig=createHumanoidRig();p.animation=createAnimationController();s.requiredPacks.push('character-animation');
+  const loaded=parseScene(JSON.stringify(s));
+  assert.equal(loaded.objects[1].rig.type,'humanoid');
+  assert.equal(loaded.objects[1].rig.bones.length,18);
+  assert.equal(loaded.objects[1].animation.defaultClip,'Idle');
+  assert.deepEqual(loaded.requiredPacks,['character-animation']);
+});
+test('invalid rig parent references are rejected', () => {
+  const s=demoScene(), p=s.objects[1];p.rig=createHumanoidRig();p.rig.bones[1].parent='missing-bone';
+  assert.throws(()=>parseScene(JSON.stringify(s)));
 });
