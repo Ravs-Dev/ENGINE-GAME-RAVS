@@ -212,3 +212,20 @@ test('workspace splitters resize, collapse and persist editor layout', async ({ 
   await page.locator('#maximizeViewport').click(); await expect(page.locator('body')).toHaveClass(/viewport-maximized/);
   await page.locator('#maximizeViewport').click(); await expect(page.locator('body')).not.toHaveClass(/viewport-maximized/);
 });
+
+test('feature pack manager and humanoid rig workflow', async ({ page }) => {
+  await page.goto('/');
+  await expect(page.locator('#packList .pack-card')).toHaveCount(9);
+  await page.locator('#hierarchy button').filter({hasText:'Player'}).click();
+  await page.getByRole('button',{name:'+ Humanoid Rig'}).click();
+  await expect(page.locator('#inspector')).toContainText('18 bones');
+  await page.locator('#exportGame').click();
+  await expect(page.locator('#status')).toContainText('Build diblokir');
+  const required=await page.evaluate(()=>JSON.parse(localStorage.getItem('ravs.scene.3d.v2')||'null'));
+  await page.locator('#save').click();
+  const saved=await page.evaluate(()=>JSON.parse(localStorage.getItem('ravs.scene.3d.v2')));
+  expect(saved.requiredPacks).toContain('character-animation');
+  await expect(page.locator('#packList .pack-card.required')).toContainText('Character & Animation Pack');
+  await page.locator('#featurePackImport').setInputFiles({name:'character.ravspack',mimeType:'application/json',buffer:Buffer.from(JSON.stringify({id:'character-animation',version:'0.9.0'}))});
+  await expect(page.locator('#packList .pack-card.ready')).toContainText('Character & Animation Pack');
+});

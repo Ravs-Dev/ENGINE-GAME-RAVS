@@ -11,6 +11,45 @@ const geometryFor = kind =>
   kind === 'torus' ? new THREE.TorusGeometry(0.5,0.18,16,48) :
   new THREE.BoxGeometry();
 
+function updateRigHelper(node, rig) {
+  const signature = rig ? JSON.stringify(rig) : '';
+  if (node.userData.rigSignature === signature) return;
+  if (node.userData.rigHelper) {
+    node.remove(node.userData.rigHelper);
+    node.userData.rigHelper.traverse?.(child => { child.geometry?.dispose?.(); child.material?.dispose?.(); });
+    node.userData.rigHelper = null;
+  }
+  node.userData.rigSignature = signature;
+  if (!rig?.enabled || !Array.isArray(rig.bones) || !rig.bones.length) return;
+  const byId = new Map(rig.bones.map(b => [b.id, b]));
+  const absolute = new Map();
+  const resolve = bone => {
+    if (absolute.has(bone.id)) return absolute.get(bone.id);
+    const local = new THREE.Vector3(bone.position.x, bone.position.y, bone.position.z);
+    const parent = bone.parent ? byId.get(bone.parent) : null;
+    const value = parent ? resolve(parent).clone().add(local) : local;
+    absolute.set(bone.id, value);
+    return value;
+  };
+  const linePoints = [], jointPoints = [];
+  for (const bone of rig.bones) {
+    const p = resolve(bone); jointPoints.push(p);
+    if (bone.parent && byId.has(bone.parent)) linePoints.push(resolve(byId.get(bone.parent)), p);
+  }
+  const helper = new THREE.Group();
+  if (linePoints.length) {
+    const geometry = new THREE.BufferGeometry().setFromPoints(linePoints);
+    const lines = new THREE.LineSegments(geometry, new THREE.LineBasicMaterial({ color:0x38bdf8, depthTest:false, transparent:true, opacity:.9 }));
+    lines.renderOrder = 999; helper.add(lines);
+  }
+  if (jointPoints.length) {
+    const geometry = new THREE.BufferGeometry().setFromPoints(jointPoints);
+    const points = new THREE.Points(geometry, new THREE.PointsMaterial({ color:0xffffff, size:.07, sizeAttenuation:true, depthTest:false }));
+    points.renderOrder = 1000; helper.add(points);
+  }
+  helper.name = 'RAVS Armature Preview'; node.add(helper); node.userData.rigHelper = helper;
+}
+
 export function createViewport(canvas, onSelect, onTransform, onTransformEnd) {
   const renderer=new THREE.WebGLRenderer({canvas,antialias:true});
   renderer.setPixelRatio(Math.min(devicePixelRatio,2)); renderer.shadowMap.enabled=true; renderer.outputColorSpace=THREE.SRGBColorSpace;
@@ -45,6 +84,7 @@ export function createViewport(canvas, onSelect, onTransform, onTransformEnd) {
   }
   function dispose(node){
     if(node.geometry)node.geometry.dispose();
+    node.userData.rigHelper?.traverse?.(child=>{child.geometry?.dispose?.();child.material?.dispose?.();});
     node.userData.litMaterial?.dispose(); node.userData.unlitMaterial?.dispose();
     if(node.material&&!node.userData.litMaterial)node.material.dispose?.();
     group.remove(node);
@@ -63,7 +103,7 @@ export function createViewport(canvas, onSelect, onTransform, onTransformEnd) {
         lit.color.set(o.color);lit.roughness=o.material.roughness;lit.metalness=o.material.metalness;lit.emissive.set(o.material.emissive);lit.emissiveIntensity=o.material.emissiveIntensity;
         unlit.color.set(o.color);
         const wf=wireframe||shading==='wireframe'||o.material.wireframe;lit.wireframe=wf;unlit.wireframe=wf;n.material=shading==='unlit'?unlit:lit;
-        n.castShadow=shadows&&o.render.castShadow;n.receiveShadow=shadows&&o.render.receiveShadow;
+        n.castShadow=shadows&&o.render.castShadow;n.receiveShadow=shadows&&o.render.receiveShadow;updateRigHelper(n,o.rig);
       }
       if(LIGHT_KINDS.includes(o.kind)){n.color.set(o.light.color);n.intensity=o.light.intensity;n.castShadow=shadows&&o.render.castShadow;if(o.kind==='pointLight'){n.distance=o.light.distance;n.decay=o.light.decay;}}
     }
