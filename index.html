@@ -107,6 +107,10 @@
     <button id="scanToolchains">Scan Toolchains</button>
     <div id="toolchainStatus" class="toolchain-status">Belum dipindai.</div>
   </section>
+  <section id="packManagerPanel" class="pack-manager-panel" aria-label="Feature Pack Manager">
+    <div class="panel-title-row"><div><h2>Feature Pack Manager</h2><p>Fitur berat dipasang terpisah. Project akan mencatat pack yang dibutuhkan sebelum build.</p></div><div class="pack-actions"><button id="refreshPacks">Refresh</button><label class="button">Import .ravspack<input id="featurePackImport" type="file" accept=".json,.ravspack" hidden></label></div></div>
+    <div id="packList" class="pack-list"></div>
+  </section>
   <div id="bottomSplitter" class="workspace-splitter horizontal" role="separator" tabindex="0" aria-label="Resize Content Browser" aria-orientation="horizontal" aria-valuemin="180" aria-valuemax="620" aria-valuenow="320"></div>
   <section id="contentWorkspace" class="project-workspace" aria-label="File dan script proyek">
     <aside id="projectBrowserPanel" class="project-browser">
