@@ -1,5 +1,6 @@
 const { app, BrowserWindow, Menu, dialog, session, ipcMain, shell } = require('electron');
 const path = require('node:path');
+const fs = require('node:fs/promises');
 const { execFile } = require('node:child_process');
 const { promisify } = require('node:util');
 const execFileAsync = promisify(execFile);
@@ -41,6 +42,36 @@ app.whenReady().then(() => {
   handler('project:read', relative => projectStore.read(relative));
   handler('project:create', (relative, type, content) => projectStore.create(relative, type, content));
   handler('project:write', (relative, content, revision) => projectStore.write(relative, content, revision));
+  handler('packs:list', async () => {
+    const dir=path.join(app.getPath('userData'),'packs');
+    await fs.mkdir(dir,{recursive:true});
+    const entries=await fs.readdir(dir,{withFileTypes:true}),packs=[];
+    for(const entry of entries){
+      if(!entry.isFile()||!entry.name.endsWith('.ravspack'))continue;
+      try{
+        const raw=await fs.readFile(path.join(dir,entry.name),'utf8');
+        const data=JSON.parse(raw);
+        if(data&&typeof data.id==='string'&&typeof data.version==='string')packs.push({id:data.id,version:data.version,name:typeof data.name==='string'?data.name:data.id});
+      }catch{}
+    }
+    return packs;
+  });
+  handler('packs:install', async () => {
+    const result=await dialog.showOpenDialog(window,{title:'Install RAVS Feature Pack',properties:['openFile'],filters:[{name:'RAVS Feature Pack',extensions:['ravspack','json']}]});
+    if(result.canceled)return null;
+    const source=result.filePaths[0],stat=await fs.stat(source);
+    if(!stat.isFile()||stat.size>5*1024*1024)throw Error('Manifest pack maksimal 5 MB.');
+    const raw=await fs.readFile(source,'utf8'),data=JSON.parse(raw);
+    if(!data||typeof data.id!=='string'||!/^[a-z0-9-]{1,80}$/.test(data.id)||typeof data.version!=='string'||data.version.length>40)throw Error('Manifest .ravspack tidak valid.');
+    const dir=path.join(app.getPath('userData'),'packs');await fs.mkdir(dir,{recursive:true});
+    await fs.writeFile(path.join(dir,data.id+'.ravspack'),raw,{encoding:'utf8',mode:0o600});
+    return {id:data.id,version:data.version,name:typeof data.name==='string'?data.name:data.id};
+  });
+  handler('packs:remove', async id => {
+    if(typeof id!=='string'||!/^[a-z0-9-]{1,80}$/.test(id))throw Error('ID pack tidak valid.');
+    const file=path.join(app.getPath('userData'),'packs',id+'.ravspack');
+    await fs.rm(file,{force:true});return true;
+  });
   handler('external:open', async raw => {
     const url = new URL(String(raw));
     const allowed = new Set(['github.com','developer.android.com','visualstudio.microsoft.com','dotnet.microsoft.com','adoptium.net']);
