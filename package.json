@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "node server.js",
     "start": "node server.js",
-    "test": "node --test tests/scene.test.js tests/history.test.js tests/project.test.js tests/export.test.js tests/modeling.test.js",
+    "test": "node --test tests/scene.test.js tests/history.test.js tests/project.test.js tests/export.test.js tests/modeling.test.js tests/assets-library.test.js",
     "test:browser": "playwright test",
     "desktop": "electron .",
     "dist": "electron-builder",
