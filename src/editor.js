@@ -467,7 +467,7 @@ function openMenu(button,key){
 document.querySelectorAll('.menu-item').forEach(button=>button.onclick=e=>{e.stopPropagation();if(!menuPopup.hidden&&menuPopup.dataset.menu===button.dataset.menu){closeMenu();return;}menuPopup.dataset.menu=button.dataset.menu;openMenu(button,button.dataset.menu);});
 document.addEventListener('pointerdown',e=>{if(!menuPopup.hidden&&!menuPopup.contains(e.target)&&!e.target.classList.contains('menu-item'))closeMenu();});
 $('hierarchyCreate').onclick=e=>{ const source=document.querySelector('[data-menu="gameObject"]'); openMenu(source,'gameObject'); menuPopup.style.left=e.currentTarget.getBoundingClientRect().left+'px'; menuPopup.style.top=e.currentTarget.getBoundingClientRect().bottom+'px'; };
-updatePlayUI(); refresh(); requestAnimationFrame(frame); showSplash();
+updatePlayUI(); refresh(); requestAnimationFrame(frame);
 
 
 let detectedToolchains = [];
