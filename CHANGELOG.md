@@ -11,7 +11,12 @@
 - Use the active Main Camera in built/exported games, with orbit camera fallback when none exists.
 - Add embedded OBJ import from the Modeling workspace.
 - Render imported OBJ models in both the editor viewport and exported game runtime.
-- Add regression tests for modeling geometry/modifier normalization.
+- Add Camera Preview from Camera Actor inspector.
+- Add editable Animation Clip controls for rigged objects.
+- Add reusable Prefab library with instantiate/delete actions.
+- Add reusable Material Preset library with apply/delete actions.
+- Add dedicated Assets tab in the lower workspace.
+- Add regression tests for modeling geometry/modifier normalization and reusable asset libraries.
 
 
 ## 0.9.2
