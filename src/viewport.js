@@ -129,7 +129,6 @@ export function createViewport(canvas, onSelect, onTransform, onTransformEnd) {
     } else {
       node=new THREE.Group();
       const previewCamera=new THREE.PerspectiveCamera(o.camera?.fov??60,1,o.camera?.near??0.1,o.camera?.far??2000);
-      previewCamera.rotation.y=Math.PI;
       const helper=new THREE.CameraHelper(previewCamera);helper.userData.id=o.id;node.add(previewCamera,helper);node.userData.previewCamera=previewCamera;node.userData.cameraHelper=helper;
     }
     node.userData.id=o.id;node.userData.kind=o.kind;nodes.set(o.id,node);group.add(node);return node;
@@ -186,6 +185,12 @@ export function createViewport(canvas, onSelect, onTransform, onTransformEnd) {
     setSnap:v=>{gizmo.setTranslationSnap(v?.5:null);gizmo.setRotationSnap(v?Math.PI/12:null);gizmo.setScaleSnap(v?.25:null);},
     setMode:m=>gizmo.setMode(m),
     focus(id){const n=nodes.get(id);if(!n)return;orbit.target.copy(n.position);camera.position.copy(n.position).add(new THREE.Vector3(5,4,6));orbit.update();},
+    viewThrough(id){
+      const n=nodes.get(id);if(!n?.userData?.previewCamera)return false;
+      const source=n.userData.previewCamera;
+      camera.fov=source.fov;camera.near=source.near;camera.far=source.far;camera.position.copy(n.position);camera.quaternion.copy(n.quaternion);camera.updateProjectionMatrix();
+      const forward=new THREE.Vector3(0,0,-1).applyQuaternion(camera.quaternion);orbit.target.copy(camera.position).addScaledVector(forward,5);orbit.update();return true;
+    },
     stats(){return {calls:renderer.info.render.calls,triangles:renderer.info.render.triangles,lines:renderer.info.render.lines};},
     render(){const w=Math.max(1,canvas.clientWidth),h=Math.max(1,canvas.clientHeight);if(canvas.width!==Math.floor(w*renderer.getPixelRatio())||canvas.height!==Math.floor(h*renderer.getPixelRatio())){renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix();}orbit.update();renderer.render(world,camera);}
   };
