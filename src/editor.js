@@ -131,7 +131,7 @@ function selectedModel(){return scene.objects.find(o=>o.id===selected&&MODEL_KIN
 function estimatedHalfHeight(o){
   if(!o)return 0;
   const g=normalizeGeometry(o.kind,o.geometry);
-  const base=o.kind==='sphere'?g.radius:o.kind==='cylinder'||o.kind==='cone'?g.height/2:o.kind==='torus'?g.radius+g.tube:o.kind==='plane'?.01:g.height/2;
+  const base=o.kind==='sphere'?g.radius:(o.kind==='cylinder'||o.kind==='cone')?g.height/2:o.kind==='torus'?g.radius+g.tube:o.kind==='plane'?0.01:g.height/2;
   return base*Math.abs(o.scale.y);
 }
 function setWorkspace(mode){
