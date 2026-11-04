@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.1.0
+
+- Add Particle Emitter actors with count, size, speed, lifetime, spread, gravity, color, loop and seed controls.
+- Animate Particle Emitters in both the editor viewport and built/exported game runtime.
+- Add Particle Emitter creation from World Outliner and GameObject menu.
+
+
 ## 1.0.0
 
 - Add Level, Modeling, Animation and Build workspace tabs.
