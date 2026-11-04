@@ -73,3 +73,11 @@ test('invalid rig parent references are rejected', () => {
   const s=demoScene(), p=s.objects[1];p.rig=createHumanoidRig();p.rig.bones[1].parent='missing-bone';
   assert.throws(()=>parseScene(JSON.stringify(s)));
 });
+
+test('cyclic rig hierarchy and duplicate animation clip ids are rejected', () => {
+  const s=demoScene(),p=s.objects[1];p.rig=createHumanoidRig();p.animation=createAnimationController();
+  p.rig.bones[0].parent=p.rig.bones[1].id;p.rig.bones[1].parent=p.rig.bones[0].id;
+  assert.throws(()=>parseScene(JSON.stringify(s)));
+  p.rig=createHumanoidRig();p.animation=createAnimationController();p.animation.clips[1].id=p.animation.clips[0].id;
+  assert.throws(()=>parseScene(JSON.stringify(s)));
+});
