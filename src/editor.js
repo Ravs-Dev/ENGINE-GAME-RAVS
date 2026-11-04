@@ -2,11 +2,12 @@ import logo from '../assets/ravs-logo.png';
 import { createProjectPanel } from './project-panel.js';
 import { createGameHTML, validateSplash } from './game-export.js';
 import { download } from './project.js';
-import { createObject, createScene, createHumanoidRig, createAnimationController, demoScene, parseScene, step, LIGHT_KINDS, CAMERA_KINDS, MODEL_ASSET_KINDS } from './scene.js';
+import { createObject, createScene, createHumanoidRig, createAnimationController, demoScene, parseScene, step, LIGHT_KINDS, CAMERA_KINDS, MODEL_ASSET_KINDS, TERRAIN_KINDS } from './scene.js';
 import { History } from './history.js';
 import { createViewport } from './viewport.js';
 import { FEATURE_PACKS, readPackState, writePackState, isPackReady } from './feature-packs.js';
 import { MODEL_KINDS, defaultGeometry, defaultModifiers, normalizeGeometry, normalizeModifiers } from './modeling.js';
+import { defaultTerrain, normalizeTerrain } from './terrain.js';
 import { listPrefabs, savePrefab, instantiatePrefab, removePrefab, listMaterials, saveMaterial, applyMaterialPreset, removeMaterial } from './assets-library.js';
 const $ = id => document.getElementById(id);
 const keys = new Set(), storageKey = 'ravs.scene.3d.v2';
@@ -179,6 +180,14 @@ function refresh() {
     field(inspector, 'Layer', o, 'layer', 'number', 0, 31);
     field(inspector, 'Warna', o, 'color', 'color');
     appendModelingInspector(inspector,o);
+    if(TERRAIN_KINDS.includes(o.kind)){
+      o.terrain=normalizeTerrain(o.terrain??defaultTerrain());
+      const terrain=document.createElement('section');terrain.className='modeling-section';const h=document.createElement('h3');h.textContent='Terrain';terrain.append(h);
+      const grid=document.createElement('div');grid.className='modeling-grid';
+      modelingField(grid,'Width',o.terrain,'width',1,1000,.5);modelingField(grid,'Depth',o.terrain,'depth',1,1000,.5);modelingField(grid,'Resolution',o.terrain,'segments',2,160,1);
+      modelingField(grid,'Height',o.terrain,'height',0,100,.1);modelingField(grid,'Frequency',o.terrain,'frequency',.001,10,.01);modelingField(grid,'Seed',o.terrain,'seed',-1000000,1000000,1);
+      terrain.append(grid);const reset=document.createElement('button');reset.textContent='Reset Terrain';reset.disabled=!!backup;reset.onclick=()=>{o.terrain=defaultTerrain();record();refresh();};terrain.append(reset);inspector.append(terrain);
+    }
     if(MODEL_ASSET_KINDS.includes(o.kind)){
       const asset=document.createElement('section');asset.className='modeling-section';
       const h=document.createElement('h3');h.textContent='Imported Model';asset.append(h);
@@ -271,7 +280,7 @@ function refresh() {
     }
   } else inspector.textContent = 'Pilih objek di viewport atau hierarchy.';
   $('name').value = scene.name; $('gravity').value = scene.gravity; $('sceneName').textContent = scene.name;
-  for (const id of ['box', 'sphere', 'cylinder', 'plane', 'cone', 'torus', 'pointLight', 'directionalLight', 'cameraActor', 'new', 'background', 'grid', 'snap', 'wireframe', 'shadows', 'exportGame', 'demo', 'save', 'export', 'import', 'name', 'gravity', 'mode', 'ambientColor', 'ambientIntensity', 'sunColor', 'sunIntensity', 'exposure', 'fogEnabled', 'fogColor', 'fogNear', 'fogFar']) $(id).disabled = !!backup;
+  for (const id of ['box', 'sphere', 'cylinder', 'plane', 'cone', 'torus', 'pointLight', 'directionalLight', 'cameraActor', 'terrainActor', 'new', 'background', 'grid', 'snap', 'wireframe', 'shadows', 'exportGame', 'demo', 'save', 'export', 'import', 'name', 'gravity', 'mode', 'ambientColor', 'ambientIntensity', 'sunColor', 'sunIntensity', 'exposure', 'fogEnabled', 'fogColor', 'fogNear', 'fogFar']) $(id).disabled = !!backup;
   $('background').value = scene.background ?? '#080808';
   $('grid').checked = scene.grid ?? true;
   $('ambientColor').value = scene.environment.ambientColor; $('ambientIntensity').value = scene.environment.ambientIntensity;
@@ -282,6 +291,7 @@ function refresh() {
 }
 for (const kind of ['box', 'sphere', 'cylinder', 'plane', 'cone', 'torus', 'pointLight', 'directionalLight']) $(kind).onclick = () => { const o = createObject(kind); scene.objects.push(o); selected = o.id; record(); refresh(); };
 $('cameraActor').onclick=()=>{const o=createObject('camera');const already=scene.objects.some(x=>CAMERA_KINDS.includes(x.kind));if(already)o.camera.primary=false;o.position={x:0,y:3,z:6};scene.objects.push(o);selected=o.id;record();refresh();status('Camera Actor ditambahkan.');};
+$('terrainActor').onclick=()=>{const o=createObject('terrain');o.position={x:0,y:0,z:0};o.color='#4f7d4a';scene.objects.push(o);selected=o.id;record();setWorkspace('modeling');refresh();status('Terrain Actor ditambahkan.');};
 $('undo').onclick = () => restoreHistory('undo');
 $('redo').onclick = () => restoreHistory('redo');
 $('search').oninput = refresh;
@@ -534,7 +544,7 @@ const menuDefinitions = {
   gameObject:[
     ['Cube',()=>addObject('box')],['Sphere',()=>addObject('sphere')],['Cylinder',()=>addObject('cylinder')],
     ['Plane',()=>addObject('plane')],['Cone',()=>addObject('cone')],['Torus',()=>addObject('torus')],
-    ['Point Light',()=>addObject('pointLight')],['Directional Light',()=>addObject('directionalLight')],['Camera',()=>$('cameraActor').click()]
+    ['Point Light',()=>addObject('pointLight')],['Directional Light',()=>addObject('directionalLight')],['Camera',()=>$('cameraActor').click()],['Terrain',()=>$('terrainActor').click()]
   ],
   component:[
     ['Rigidbody',()=>addComponent('rigidbody')],['Controller',()=>addComponent('controller')],['Script',()=>addComponent('script')]
