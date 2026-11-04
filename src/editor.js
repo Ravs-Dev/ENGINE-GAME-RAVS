@@ -480,6 +480,15 @@ updatePlayUI(); refresh(); requestAnimationFrame(frame); showSplash();
 
 let detectedToolchains = [];
 let packState = readPackState();
+async function syncDesktopPacks(){
+  if(!window.ravsDesktop?.listPacks)return;
+  const result=await window.ravsDesktop.listPacks();
+  if(!result.ok){status('Gagal membaca feature packs: '+result.error);return;}
+  const next={...packState};
+  for(const pack of FEATURE_PACKS) if(pack.kind==='engine') delete next[pack.id];
+  for(const item of result.data) next[item.id]={installed:true,version:item.version,desktop:true};
+  packState=next;writePackState(packState);renderPackManager();
+}
 function renderPackManager(){
   const list=$('packList'); if(!list)return; list.replaceChildren();
   for(const pack of FEATURE_PACKS){
@@ -497,14 +506,24 @@ function renderPackManager(){
     download.onclick=async()=>{if(window.ravsDesktop?.openExternal){const result=await window.ravsDesktop.openExternal(pack.url);if(!result.ok)status(result.error);}else status('Download link tersedia pada aplikasi desktop.');};
     actions.append(download);
     if(pack.kind==='engine'){
-      const note=document.createElement('span');note.className='pack-install-note';note.textContent=ready?'Pack manifest installed':'Download lalu Import .ravspack';actions.append(note);
+      const note=document.createElement('span');note.className='pack-install-note';note.textContent=ready?'Pack installed':'Download lalu install .ravspack';actions.append(note);
+      if(ready&&packState[pack.id]?.desktop&&window.ravsDesktop?.removePack){
+        const remove=document.createElement('button');remove.textContent='Uninstall';remove.onclick=async()=>{const result=await window.ravsDesktop.removePack(pack.id);if(!result.ok){status(result.error);return;}await syncDesktopPacks();status(pack.name+' dihapus.');};actions.append(remove);
+      }
     }
     card.append(head,meta,desc,actions);list.append(card);
   }
   const missing=(scene.requiredPacks??[]).filter(id=>FEATURE_PACKS.some(pack=>pack.id===id&&!isPackReady(pack,packState,detectedToolchains)));
   if($('dockStatus')) $('dockStatus').textContent=missing.length?'RAVS Engine 3D · Missing '+missing.length+' required pack(s)':'RAVS Engine 3D · All required packs ready';
 }
-$('refreshPacks').onclick=()=>{renderPackManager();status('Status feature pack diperbarui.');};
+$('refreshPacks').onclick=async()=>{await syncDesktopPacks();renderPackManager();status('Status feature pack diperbarui.');};
+$('installDownloadedPack').onclick=async()=>{
+  if(!window.ravsDesktop?.installPack){status('Install pack langsung hanya tersedia di aplikasi desktop.');return;}
+  const result=await window.ravsDesktop.installPack();
+  if(!result.ok){status('Install pack gagal: '+result.error);return;}
+  if(!result.data){status('Install pack dibatalkan.');return;}
+  await syncDesktopPacks();status('Feature pack '+result.data.id+' terpasang.');
+};
 $('featurePackImport').onchange=async e=>{
   const file=e.target.files?.[0]; if(!file)return;
   try{
@@ -514,6 +533,7 @@ $('featurePackImport').onchange=async e=>{
   }catch(error){status('Import pack gagal: '+error.message);} finally {e.target.value='';}
 };
 renderPackManager();
+syncDesktopPacks();
 
 const toolchainNames = { lua:'Lua', c:'C', cpp:'C++', csharp:'C#', java:'Java' };
 $('scanToolchains').onclick = async () => {
