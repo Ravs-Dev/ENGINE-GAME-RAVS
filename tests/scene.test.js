@@ -104,3 +104,9 @@ test('terrain actor configuration roundtrip',()=>{
   const loaded=parseScene(JSON.stringify(s));const t=loaded.objects.at(-1);
   assert.equal(t.kind,'terrain');assert.equal(t.terrain.width,80);assert.equal(t.terrain.seed,42);
 });
+
+test('particle emitter configuration roundtrip',()=>{
+  const s=demoScene(),p=createObject('particleEmitter');p.particle={count:250,size:.12,speed:2,lifetime:3,spread:4,gravity:-2,color:'#38bdf8',loop:true,seed:7};s.objects.push(p);
+  const loaded=parseScene(JSON.stringify(s));const result=loaded.objects.at(-1);
+  assert.equal(result.kind,'particleEmitter');assert.equal(result.particle.count,250);assert.equal(result.particle.seed,7);
+});

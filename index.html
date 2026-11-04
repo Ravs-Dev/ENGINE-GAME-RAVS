@@ -54,7 +54,7 @@
       <div class="tools"><button id="plane">+ Plane</button><button id="cone">+ Cone</button></div>
       <div class="tools"><button id="torus">+ Torus</button><button id="pointLight">+ Point Light</button></div>
       <div class="tools"><button id="directionalLight">+ Directional Light</button><button id="cameraActor">+ Camera</button></div>
-      <button id="terrainActor">+ Terrain</button>
+      <div class="tools"><button id="terrainActor">+ Terrain</button><button id="particleActor">+ Particle</button></div>
       <label class="search">Cari objek<input id="search" type="search" placeholder="Nama objek"></label>
       <button id="cylinder">+ Cylinder</button>
       <div id="hierarchy"></div>
@@ -119,6 +119,19 @@
     <div><div class="panel-title-row"><h2>Toolchain Manager</h2><button id="collapseToolchain" class="panel-mini" title="Collapse Toolchain Manager">⌄</button></div><p>Deteksi runtime/compiler lokal untuk Script Component. Instalasi toolchain dilakukan oleh pengguna dari penyedia resminya.</p></div>
     <button id="scanToolchains">Scan Toolchains</button>
     <div id="toolchainStatus" class="toolchain-status">Belum dipindai.</div>
+  </section>
+  <section id="buildSettingsPanel" class="build-settings-panel" aria-label="Build Settings">
+    <div class="panel-title-row"><div><h2>Build Settings</h2><p>Pilih target game. RAVS hanya mengaktifkan build yang runtime/toolchain-nya benar-benar tersedia.</p></div><button id="buildNow">Build Selected Target</button></div>
+    <div class="build-settings-grid">
+      <label>Target<select id="buildTarget"><option value="web">Web / HTML5</option><option value="windows">Windows x64</option><option value="linux">Linux x64</option><option value="android">Android APK</option></select></label>
+      <label>Quality<select id="buildQuality"><option value="low">Low</option><option value="medium">Medium</option><option value="high">High</option><option value="ultra">Ultra</option></select></label>
+      <label>Width<input id="buildWidth" type="number" min="320" max="7680" step="1"></label>
+      <label>Height<input id="buildHeight" type="number" min="240" max="4320" step="1"></label>
+      <label class="compact-check"><input id="buildFullscreen" type="checkbox"> Fullscreen</label>
+      <label class="compact-check"><input id="buildDevelopment" type="checkbox"> Development Build</label>
+    </div>
+    <div id="buildTargetCards" class="build-target-cards"></div>
+    <p id="buildReadiness" class="build-readiness"></p>
   </section>
   <section id="packManagerPanel" class="pack-manager-panel" aria-label="Feature Pack Manager">
     <div class="panel-title-row"><div><h2>Feature Pack Manager</h2><p>Fitur berat dipasang terpisah. Project akan mencatat pack yang dibutuhkan sebelum build.</p></div><div class="pack-actions"><button id="refreshPacks">Refresh</button><button id="installDownloadedPack">Install Downloaded Pack</button><label class="button">Import Manifest (Web)<input id="featurePackImport" type="file" accept=".json,.ravspack" hidden></label></div></div>

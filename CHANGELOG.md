@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.1.0
+
+- Add Particle Emitter actors with count, size, speed, lifetime, spread, gravity, color, loop and seed controls.
+- Animate Particle Emitters in both the editor viewport and built/exported game runtime.
+- Add Particle Emitter creation from World Outliner and GameObject menu.
+- Add Build Settings target cards for Web, Windows, Linux and Android.
+- Keep Web build enabled while native targets explicitly report missing runtime/toolchain readiness instead of exposing fake build actions.
+
+
 ## 1.0.0
 
 - Add Level, Modeling, Animation and Build workspace tabs.
