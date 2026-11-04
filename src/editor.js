@@ -2,9 +2,10 @@ import logo from '../assets/ravs-logo.png';
 import { createProjectPanel } from './project-panel.js';
 import { createGameHTML, validateSplash } from './game-export.js';
 import { download } from './project.js';
-import { createObject, createScene, demoScene, parseScene, step, LIGHT_KINDS } from './scene.js';
+import { createObject, createScene, createHumanoidRig, createAnimationController, demoScene, parseScene, step, LIGHT_KINDS } from './scene.js';
 import { History } from './history.js';
 import { createViewport } from './viewport.js';
+import { FEATURE_PACKS, readPackState, writePackState, isPackReady } from './feature-packs.js';
 const $ = id => document.getElementById(id);
 const keys = new Set(), storageKey = 'ravs.scene.3d.v2';
 const layoutStorageKey = 'ravs.layout.v1';
@@ -131,6 +132,27 @@ function refresh() {
     field(inspector, 'Bounce', o.body, 'bounce', 'number', 0, 1);
     field(inspector, 'Controller', o.motion, 'enabled', 'checkbox');
     field(inspector, 'Kecepatan', o.motion, 'speed', 'number', 0, 100);
+    if (!LIGHT_KINDS.includes(o.kind)) {
+      const rt=document.createElement('h2'); rt.textContent='Rig / Armature'; inspector.append(rt);
+      if (!o.rig) {
+        const addRig=document.createElement('button'); addRig.textContent='+ Humanoid Rig';
+        addRig.disabled=!!backup; addRig.onclick=()=>{o.rig=createHumanoidRig();o.animation=createAnimationController();if(!scene.requiredPacks.includes('character-animation'))scene.requiredPacks.push('character-animation');record();refresh();renderPackManager();status('Humanoid rig 18 bones dan Animation Controller ditambahkan. Character & Animation Pack ditandai sebagai kebutuhan project.');};
+        inspector.append(addRig);
+      } else {
+        field(inspector,'Rig Enabled',o.rig,'enabled','checkbox');
+        const info=document.createElement('p'); info.textContent=o.rig.type+' · '+o.rig.bones.length+' bones'; inspector.append(info);
+        const boneList=document.createElement('details'); const summary=document.createElement('summary'); summary.textContent='Bones ('+o.rig.bones.length+')'; boneList.append(summary);
+        for(const bone of o.rig.bones){const row=document.createElement('div');row.className='bone-row';row.textContent=bone.name;boneList.append(row);} inspector.append(boneList);
+        const removeRig=document.createElement('button');removeRig.textContent='Remove Rig';removeRig.disabled=!!backup;removeRig.onclick=()=>{o.rig=null;o.animation=null;record();refresh();};inspector.append(removeRig);
+      }
+      const at=document.createElement('h2');at.textContent='Animation';inspector.append(at);
+      if(o.animation){
+        field(inspector,'Enabled',o.animation,'enabled','checkbox');field(inspector,'Autoplay',o.animation,'autoplay','checkbox');field(inspector,'Default Clip',o.animation,'defaultClip','text');
+        for(const clip of o.animation.clips){const row=document.createElement('div');row.className='animation-clip';const name=document.createElement('strong');name.textContent=clip.name;const path=document.createElement('span');path.textContent=clip.path;row.append(name,path);inspector.append(row);}
+      } else {
+        const note=document.createElement('p');note.textContent='Tambahkan Humanoid Rig untuk membuat Animation Controller.';inspector.append(note);
+      }
+    }
     const st = document.createElement('h2'); st.textContent = 'Script Components'; inspector.append(st);
     for (const script of o.scripts) {
       const card = document.createElement('div'); card.className = 'script-component';
@@ -447,6 +469,42 @@ document.addEventListener('pointerdown',e=>{if(!menuPopup.hidden&&!menuPopup.con
 $('hierarchyCreate').onclick=e=>{ const source=document.querySelector('[data-menu="gameObject"]'); openMenu(source,'gameObject'); menuPopup.style.left=e.currentTarget.getBoundingClientRect().left+'px'; menuPopup.style.top=e.currentTarget.getBoundingClientRect().bottom+'px'; };
 updatePlayUI(); refresh(); requestAnimationFrame(frame); showSplash();
 
+
+let detectedToolchains = [];
+let packState = readPackState();
+function renderPackManager(){
+  const list=$('packList'); if(!list)return; list.replaceChildren();
+  for(const pack of FEATURE_PACKS){
+    const ready=isPackReady(pack,packState,detectedToolchains);
+    const required=scene.requiredPacks?.includes(pack.id);
+    const card=document.createElement('article'); card.className='pack-card'+(ready?' ready':'')+(required?' required':'');
+    const head=document.createElement('div'); head.className='pack-card-head';
+    const title=document.createElement('strong'); title.textContent=pack.name;
+    const state=document.createElement('span'); state.className='pack-state'; state.textContent=ready?'Ready':required?'Required':'Not installed';
+    head.append(title,state);
+    const meta=document.createElement('small'); meta.textContent=pack.category+' · '+pack.size;
+    const desc=document.createElement('p'); desc.textContent=pack.description;
+    const actions=document.createElement('div');actions.className='pack-card-actions';
+    const download=document.createElement('button');download.textContent=pack.kind==='external'?'Official Download':'RAVS Downloads';
+    download.onclick=async()=>{if(window.ravsDesktop?.openExternal){const result=await window.ravsDesktop.openExternal(pack.url);if(!result.ok)status(result.error);}else status('Download link tersedia pada aplikasi desktop.');};
+    actions.append(download);
+    if(pack.kind==='engine'){
+      const toggle=document.createElement('button');toggle.textContent=packState[pack.id]?.installed?'Mark Missing':'Mark Installed';toggle.onclick=()=>{packState[pack.id]={installed:!packState[pack.id]?.installed,version:'0.9'};writePackState(packState);renderPackManager();status(pack.name+(packState[pack.id].installed?' ditandai tersedia.':' ditandai belum tersedia.'));};actions.append(toggle);
+    }
+    card.append(head,meta,desc,actions);list.append(card);
+  }
+}
+$('refreshPacks').onclick=()=>{renderPackManager();status('Status feature pack diperbarui.');};
+$('featurePackImport').onchange=async e=>{
+  const file=e.target.files?.[0]; if(!file)return;
+  try{
+    const data=JSON.parse(await file.text());
+    if(!data || typeof data.id!=='string' || !FEATURE_PACKS.some(p=>p.id===data.id) || typeof data.version!=='string') throw Error('File .ravspack tidak valid.');
+    packState[data.id]={installed:true,version:data.version};writePackState(packState);renderPackManager();status('Feature pack '+data.id+' berhasil diregistrasikan.');
+  }catch(error){status('Import pack gagal: '+error.message);} finally {e.target.value='';}
+};
+renderPackManager();
+
 const toolchainNames = { lua:'Lua', c:'C', cpp:'C++', csharp:'C#', java:'Java' };
 $('scanToolchains').onclick = async () => {
   const box = $('toolchainStatus');
@@ -454,6 +512,7 @@ $('scanToolchains').onclick = async () => {
   box.textContent = 'Memindai...';
   const result = await window.ravsDesktop.scanToolchains();
   if (!result.ok) { box.textContent = result.error; return; }
+  detectedToolchains = result.data; renderPackManager();
   box.replaceChildren();
   for (const item of result.data) {
     const row = document.createElement('div'); row.className = 'toolchain-row';
