@@ -1,5 +1,17 @@
 const finite = n => typeof n === 'number' && Number.isFinite(n) && Math.abs(n) <= 10000;
 const color = value => typeof value === 'string' && /^#[0-9a-f]{6}$/i.test(value);
+function rigParentsValid(rig) {
+  const byId=new Map(rig.bones.map(b=>[b.id,b]));
+  const visiting=new Set(),done=new Set();
+  const visit=bone=>{
+    if(done.has(bone.id))return true;
+    if(visiting.has(bone.id))return false;
+    visiting.add(bone.id);
+    if(bone.parent){const parent=byId.get(bone.parent);if(!parent||!visit(parent))return false;}
+    visiting.delete(bone.id);done.add(bone.id);return true;
+  };
+  return rig.bones.every(visit);
+}
 export const MESH_KINDS = ['box', 'sphere', 'cylinder', 'plane', 'cone', 'torus'];
 export const LIGHT_KINDS = ['pointLight', 'directionalLight'];
 const ALL_KINDS = [...MESH_KINDS, ...LIGHT_KINDS];
@@ -127,11 +139,10 @@ export function parseScene(text) {
         (b.parent === null || typeof b.parent === 'string') &&
         ['position','rotation','scale'].every(k => b[k] && ['x','y','z'].every(a => finite(b[k][a]))) &&
         ['x','y','z'].every(a => b.scale[a] > 0)) &&
-      o.rig.bones.some(b=>b.id===o.rig.rootBone) &&
-      o.rig.bones.every(b=>b.parent===null || o.rig.bones.some(parent=>parent.id===b.parent)));
+      o.rig.bones.some(b=>b.id===o.rig.rootBone) && rigParentsValid(o.rig));
     const animationValid = o.animation === null || (MESH_KINDS.includes(o.kind) && o.animation && typeof o.animation.enabled === 'boolean' &&
       typeof o.animation.autoplay === 'boolean' && typeof o.animation.defaultClip === 'string' && o.animation.defaultClip.length <= 120 &&
-      Array.isArray(o.animation.clips) && o.animation.clips.length <= 128 &&
+      Array.isArray(o.animation.clips) && o.animation.clips.length <= 128 && new Set(o.animation.clips.map(clip=>clip?.id)).size === o.animation.clips.length &&
       o.animation.clips.every(clip => clip && typeof clip.id === 'string' && typeof clip.name === 'string' && clip.name.length <= 120 &&
         typeof clip.path === 'string' && clip.path.length <= 240 && typeof clip.loop === 'boolean' && finite(clip.speed) && clip.speed >= 0 && clip.speed <= 20));
     if (!o || typeof o.id !== 'string' || ids.has(o.id) || typeof o.name !== 'string' || !ALL_KINDS.includes(o.kind) ||
