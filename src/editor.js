@@ -60,7 +60,15 @@ function saveSplash() { try { splash = validateSplash({title:$('gameTitle').valu
 $('gameTitle').value = splash.title; $('splashDuration').value = splash.duration;
 $('gameTitle').onchange = $('splashDuration').onchange = saveSplash;
 $('closeSplash').onclick = hideSplash; $('previewSplash').onclick = showSplash;
-$('exportGame').onclick = () => { try { const game = createGameHTML(backup ?? scene,splash,logo,RAVS_PLAYER_SOURCE); download('game-ravs.html',game,'text/html'); status('Game HTML diekspor dengan loading screen Ravs. Script proyek belum dijalankan di game.'); } catch(e) { status(e.message); } };
+function missingRequiredPacks(){
+  const state=readPackState();
+  return (scene.requiredPacks??[]).map(id=>FEATURE_PACKS.find(pack=>pack.id===id)).filter(Boolean).filter(pack=>!isPackReady(pack,state,detectedToolchains));
+}
+function assertRequiredPacksReady(){
+  const missing=missingRequiredPacks();
+  if(missing.length) throw Error('Build diblokir. Install feature pack yang dibutuhkan: '+missing.map(p=>p.name).join(', ')+'.');
+}
+$('exportGame').onclick = () => { try { assertRequiredPacksReady(); const game = createGameHTML(backup ?? scene,splash,logo,RAVS_PLAYER_SOURCE); download('game-ravs.html',game,'text/html'); status('Game HTML diekspor dengan loading screen Ravs. Script proyek belum dijalankan di game.'); } catch(e) { status(e.message); } };
 let viewport;
 try {
   viewport = createViewport($('canvas'), id => { if (!backup) { selected = id; refresh(); } }, (id, mesh) => {
@@ -489,10 +497,12 @@ function renderPackManager(){
     download.onclick=async()=>{if(window.ravsDesktop?.openExternal){const result=await window.ravsDesktop.openExternal(pack.url);if(!result.ok)status(result.error);}else status('Download link tersedia pada aplikasi desktop.');};
     actions.append(download);
     if(pack.kind==='engine'){
-      const toggle=document.createElement('button');toggle.textContent=packState[pack.id]?.installed?'Mark Missing':'Mark Installed';toggle.onclick=()=>{packState[pack.id]={installed:!packState[pack.id]?.installed,version:'0.9'};writePackState(packState);renderPackManager();status(pack.name+(packState[pack.id].installed?' ditandai tersedia.':' ditandai belum tersedia.'));};actions.append(toggle);
+      const note=document.createElement('span');note.className='pack-install-note';note.textContent=ready?'Pack manifest installed':'Download lalu Import .ravspack';actions.append(note);
     }
     card.append(head,meta,desc,actions);list.append(card);
   }
+  const missing=(scene.requiredPacks??[]).filter(id=>FEATURE_PACKS.some(pack=>pack.id===id&&!isPackReady(pack,packState,detectedToolchains)));
+  if($('dockStatus')) $('dockStatus').textContent=missing.length?'RAVS Engine 3D · Missing '+missing.length+' required pack(s)':'RAVS Engine 3D · All required packs ready';
 }
 $('refreshPacks').onclick=()=>{renderPackManager();status('Status feature pack diperbarui.');};
 $('featurePackImport').onchange=async e=>{
