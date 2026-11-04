@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { step, MESH_KINDS, LIGHT_KINDS, CAMERA_KINDS, MODEL_ASSET_KINDS, parseScene } from './scene.js';
 import { normalizeGeometry, normalizeModifiers } from './modeling.js';
 const payload=JSON.parse(document.getElementById('ravs-data').textContent),scene=parseScene(JSON.stringify(payload.scene)),splash=payload.splash;
@@ -14,7 +15,12 @@ function applyModifiers(geometry,raw){
   if(m.taper.enabled&&Math.abs(m.taper.amount)>.0001){const ai=axisIndex[m.taper.axis],range=Math.max(.0001,max.getComponent(ai)-min.getComponent(ai)),t=(p[ai]-min.getComponent(ai))/range,scale=Math.max(.02,1+m.taper.amount*(t-.5)),a=(ai+1)%3,b=(ai+2)%3;p[a]*=scale;p[b]*=scale;}
   position.setXYZ(i,p[0],p[1],p[2]);
  }
- position.needsUpdate=true;geometry.computeVertexNormals();return geometry;
+ position.needsUpdate=true;geometry.computeVertexNormals();
+ if(m.mirror.enabled){
+  const mirrored=geometry.clone(),axis=m.mirror.axis,scale=new THREE.Matrix4().makeScale(axis==='x'?-1:1,axis==='y'?-1:1,axis==='z'?-1:1),translate=new THREE.Matrix4().makeTranslation(axis==='x'?2*m.mirror.offset:0,axis==='y'?2*m.mirror.offset:0,axis==='z'?2*m.mirror.offset:0);
+  mirrored.applyMatrix4(translate.multiply(scale));const merged=mergeGeometries([geometry,mirrored],false);if(merged){geometry.dispose();mirrored.dispose();geometry=merged;geometry.computeVertexNormals();}else mirrored.dispose();
+ }
+ return geometry;
 }
 const geometryFor=o=>{const g=normalizeGeometry(o.kind,o.geometry);const geometry=o.kind==='sphere'?new THREE.SphereGeometry(g.radius,g.widthSegments,g.heightSegments):o.kind==='cylinder'?new THREE.CylinderGeometry(g.radiusTop,g.radiusBottom,g.height,g.radialSegments,g.heightSegments):o.kind==='plane'?new THREE.PlaneGeometry(g.width,g.height,g.widthSegments,g.heightSegments):o.kind==='cone'?new THREE.ConeGeometry(g.radius,g.height,g.radialSegments,g.heightSegments):o.kind==='torus'?new THREE.TorusGeometry(g.radius,g.tube,g.radialSegments,g.tubularSegments):new THREE.BoxGeometry(g.width,g.height,g.depth,g.widthSegments,g.heightSegments,g.depthSegments);return applyModifiers(geometry,o.modifiers);};
 try{
