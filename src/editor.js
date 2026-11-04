@@ -198,6 +198,7 @@ function refresh() {
       field(inspector,'Near Clip',o.camera,'near','number',0.01,1000);
       field(inspector,'Far Clip',o.camera,'far','number',0.02,10000);
       const makeMain=document.createElement('button');makeMain.textContent='Set as Main Camera';makeMain.disabled=!!backup;makeMain.onclick=()=>{for(const item of scene.objects)if(CAMERA_KINDS.includes(item.kind))item.camera.primary=item===o;record();refresh();status(o.name+' menjadi Main Camera.');};inspector.append(makeMain);
+      const preview=document.createElement('button');preview.textContent='Preview Camera';preview.onclick=()=>{if(viewport?.viewThrough(o.id))status('Preview '+o.name+' aktif di Scene viewport.');};inspector.append(preview);
     } else {
       const mt = document.createElement('h2'); mt.textContent = 'Material PBR'; inspector.append(mt);
       field(inspector, 'Roughness', o.material, 'roughness', 'number', 0, 1);
@@ -228,7 +229,13 @@ function refresh() {
       const at=document.createElement('h2');at.textContent='Animation';inspector.append(at);
       if(o.animation){
         field(inspector,'Enabled',o.animation,'enabled','checkbox');field(inspector,'Autoplay',o.animation,'autoplay','checkbox');field(inspector,'Default Clip',o.animation,'defaultClip','text');
-        for(const clip of o.animation.clips){const row=document.createElement('div');row.className='animation-clip';const name=document.createElement('strong');name.textContent=clip.name;const path=document.createElement('span');path.textContent=clip.path;row.append(name,path);inspector.append(row);}
+        for(const clip of o.animation.clips){
+          const card=document.createElement('div');card.className='modifier-card';
+          const head=document.createElement('div');head.className='modifier-head';const title=document.createElement('strong');title.textContent=clip.name||'Animation Clip';
+          const del=document.createElement('button');del.textContent='×';del.disabled=!!backup;del.onclick=()=>{o.animation.clips=o.animation.clips.filter(x=>x!==clip);if(o.animation.defaultClip===clip.name)o.animation.defaultClip=o.animation.clips[0]?.name??'';record();refresh();};head.append(title,del);card.append(head);
+          field(card,'Name',clip,'name','text');field(card,'Path',clip,'path','text');field(card,'Loop',clip,'loop','checkbox');field(card,'Speed',clip,'speed','number',0,20);inspector.append(card);
+        }
+        const addClip=document.createElement('button');addClip.textContent='+ Add Animation Clip';addClip.disabled=!!backup;addClip.onclick=()=>{const n='Clip '+(o.animation.clips.length+1);o.animation.clips.push({id:crypto.randomUUID(),name:n,path:'Animations/'+n.replace(/\s+/g,'')+'.anim',loop:true,speed:1});if(!o.animation.defaultClip)o.animation.defaultClip=n;record();refresh();};inspector.append(addClip);
       } else {
         const note=document.createElement('p');note.textContent='Tambahkan Humanoid Rig untuk membuat Animation Controller.';inspector.append(note);
       }
