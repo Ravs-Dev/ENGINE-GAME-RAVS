@@ -47,19 +47,12 @@ function restoreHistory(direction) {
   if (state) { scene = state.scene; selected = state.selected; refresh(); status(direction === 'undo' ? 'Perubahan dibatalkan.' : 'Perubahan diulangi.'); }
 }
 let projectPanel;
-let splash = { title: 'Game Saya', duration: 1.5 }, splashTimer = null, splashActive = false;
+let splash = { title: 'Game Saya', duration: 1.5 };
 try { const saved = localStorage.getItem('ravs.splash.v1'); if (saved) splash = validateSplash(JSON.parse(saved)); } catch { /* Keep defaults if settings are corrupt. */ }
-$('brandLogo').src = $('splashLogo').src = logo;
-function hideSplash() { clearInterval(splashTimer); splashTimer = null; splashActive = false; $('splashOverlay').hidden = true; }
-function showSplash() {
-  hideSplash(); splashActive = true; $('splashOverlay').hidden = false; $('splashTitle').textContent = splash.title;
-  const start = performance.now(); $('splashProgress').value = 0;
-  splashTimer = setInterval(() => { const progress = (performance.now() - start) / (splash.duration * 1000); $('splashProgress').value = Math.min(1,progress); if (progress >= 1) hideSplash(); }, 30);
-}
+$('brandLogo').src = logo;
 function saveSplash() { try { splash = validateSplash({title:$('gameTitle').value,duration:Number($('splashDuration').value)}); localStorage.setItem('ravs.splash.v1',JSON.stringify(splash)); } catch(e) { status(e.message); } }
 $('gameTitle').value = splash.title; $('splashDuration').value = splash.duration;
 $('gameTitle').onchange = $('splashDuration').onchange = saveSplash;
-$('closeSplash').onclick = hideSplash; $('previewSplash').onclick = showSplash;
 function missingRequiredPacks(){
   const state=readPackState();
   return (scene.requiredPacks??[]).map(id=>FEATURE_PACKS.find(pack=>pack.id===id)).filter(Boolean).filter(pack=>!isPackReady(pack,state,detectedToolchains));
@@ -68,7 +61,7 @@ function assertRequiredPacksReady(){
   const missing=missingRequiredPacks();
   if(missing.length) throw Error('Build diblokir. Install feature pack yang dibutuhkan: '+missing.map(p=>p.name).join(', ')+'.');
 }
-$('exportGame').onclick = () => { try { assertRequiredPacksReady(); const game = createGameHTML(backup ?? scene,splash,logo,RAVS_PLAYER_SOURCE); download('game-ravs.html',game,'text/html'); status('Game HTML diekspor dengan loading screen Ravs. Script proyek belum dijalankan di game.'); } catch(e) { status(e.message); } };
+$('exportGame').onclick = () => { try { assertRequiredPacksReady(); const game = createGameHTML(backup ?? scene,splash,logo,RAVS_PLAYER_SOURCE); download('game-ravs.html',game,'text/html'); status('Game HTML diekspor dengan startup splash RAVS. Script proyek belum dijalankan di game.'); } catch(e) { status(e.message); } };
 let viewport;
 try {
   viewport = createViewport($('canvas'), id => { if (!backup) { selected = id; refresh(); } }, (id, mesh) => {
@@ -238,13 +231,12 @@ function updatePlayUI() {
 }
 function stopRuntime() {
   if (!backup) return;
-  scene=backup; backup=null; paused=false; stepOnce=false; simulating=false; keys.clear(); hideSplash(); activeView='scene'; status('Edit mode');
+  scene=backup; backup=null; paused=false; stepOnce=false; simulating=false; keys.clear(); activeView='scene'; status('Edit mode');
 }
 function startRuntime(mode) {
   if (backup) return;
   backup=structuredClone(scene); paused=false; stepOnce=false; simulating=mode==='simulate'; activeView=simulating?'scene':'game'; $('canvas').focus();
   status(simulating?'Simulate mode · physics berjalan di Scene viewport.':'Play mode · WASD / tombol panah');
-  if (!simulating) showSplash();
 }
 $('play').onclick = () => { backup ? stopRuntime() : startRuntime('play'); updatePlayUI(); refresh(); };
 $('simulate').onclick = () => { backup ? stopRuntime() : startRuntime('simulate'); updatePlayUI(); refresh(); };
@@ -288,7 +280,7 @@ window.addEventListener('beforeunload', event => {
 window.addEventListener('keyup', e => keys.delete(e.key.length === 1 ? e.key.toLowerCase() : e.key));
 window.addEventListener('blur', () => keys.clear());
 function frame(time) {
-  if (backup && !splashActive && (!paused || stepOnce)) { step(scene,(time-last)/1000,keys); stepOnce=false; }
+  if (backup && (!paused || stepOnce)) { step(scene,(time-last)/1000,keys); stepOnce=false; }
   last=time; viewport?.sync(scene,selected,!!backup); viewport?.render();
   fpsFrames++;
   if (time-fpsTime>=500) {
