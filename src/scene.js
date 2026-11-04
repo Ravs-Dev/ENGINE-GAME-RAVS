@@ -1,3 +1,4 @@
+import { defaultTerrain, normalizeTerrain } from './terrain.js';
 import { MODEL_KINDS, defaultGeometry, defaultModifiers, normalizeGeometry, normalizeModifiers, validateModeling } from './modeling.js';
 const finite = n => typeof n === 'number' && Number.isFinite(n) && Math.abs(n) <= 10000;
 const color = value => typeof value === 'string' && /^#[0-9a-f]{6}$/i.test(value);
@@ -17,8 +18,9 @@ export const MESH_KINDS = [...MODEL_KINDS];
 export const LIGHT_KINDS = ['pointLight', 'directionalLight'];
 export const CAMERA_KINDS = ['camera'];
 export const MODEL_ASSET_KINDS = ['model'];
-export const RENDERABLE_KINDS = [...MESH_KINDS, ...MODEL_ASSET_KINDS];
-const ALL_KINDS = [...MESH_KINDS, ...MODEL_ASSET_KINDS, ...LIGHT_KINDS, ...CAMERA_KINDS];
+export const TERRAIN_KINDS = ['terrain'];
+export const RENDERABLE_KINDS = [...MESH_KINDS, ...MODEL_ASSET_KINDS, ...TERRAIN_KINDS];
+const ALL_KINDS = [...MESH_KINDS, ...MODEL_ASSET_KINDS, ...TERRAIN_KINDS, ...LIGHT_KINDS, ...CAMERA_KINDS];
 
 export function defaultEnvironment() {
   return {
@@ -72,7 +74,7 @@ export function createAnimationController() {
 
 export function createObject(kind = 'box', id = crypto.randomUUID()) {
   if (!ALL_KINDS.includes(kind)) kind = 'box';
-  const names = { box: 'Cube', sphere: 'Sphere', cylinder: 'Cylinder', plane: 'Plane', cone: 'Cone', torus: 'Torus', model:'Imported Model', pointLight: 'Point Light', directionalLight: 'Directional Light', camera:'Camera' };
+  const names = { box: 'Cube', sphere: 'Sphere', cylinder: 'Cylinder', plane: 'Plane', cone: 'Cone', torus: 'Torus', model:'Imported Model', terrain:'Terrain', pointLight: 'Point Light', directionalLight: 'Directional Light', camera:'Camera' };
   const object = {
     id, name: names[kind], kind, active: true, tag: 'Untagged', layer: 0,
     position: { x: 0, y: 1, z: 0 }, rotation: { x: 0, y: 0, z: 0 }, scale: { x: 1, y: 1, z: 1 },
@@ -90,6 +92,7 @@ export function createObject(kind = 'box', id = crypto.randomUUID()) {
   if (LIGHT_KINDS.includes(kind)) object.light = { color: '#ffffff', intensity: kind === 'pointLight' ? 4 : 3, distance: kind === 'pointLight' ? 20 : 0, decay: 2 };
   if (CAMERA_KINDS.includes(kind)) object.camera = { fov:60, near:0.1, far:2000, primary:true };
   if (MODEL_ASSET_KINDS.includes(kind)) object.asset = { format:'obj', name:'model.obj', data:'' };
+  if (TERRAIN_KINDS.includes(kind)) object.terrain = defaultTerrain();
   return object;
 }
 
@@ -124,6 +127,7 @@ function applyDefaults(s) {
     if (LIGHT_KINDS.includes(o.kind)) o.light = { color: '#ffffff', intensity: o.kind === 'pointLight' ? 4 : 3, distance: o.kind === 'pointLight' ? 20 : 0, decay: 2, ...(o.light ?? {}) };
     if (CAMERA_KINDS.includes(o.kind)) o.camera = { fov:60, near:0.1, far:2000, primary:true, ...(o.camera ?? {}) };
     if (MODEL_ASSET_KINDS.includes(o.kind)) o.asset = { format:'obj', name:'model.obj', data:'', ...(o.asset ?? {}) };
+    if (TERRAIN_KINDS.includes(o.kind)) o.terrain = normalizeTerrain(o.terrain ?? defaultTerrain());
   }
   return s;
 }
@@ -144,6 +148,7 @@ export function parseScene(text) {
   for (const o of s.objects) {
     const lightValid = !LIGHT_KINDS.includes(o.kind) || (o.light && color(o.light.color) && finite(o.light.intensity) && o.light.intensity >= 0 && o.light.intensity <= 100 &&
       finite(o.light.distance) && o.light.distance >= 0 && finite(o.light.decay) && o.light.decay >= 0 && o.light.decay <= 10);
+    const terrainValid = !TERRAIN_KINDS.includes(o.kind) || JSON.stringify(normalizeTerrain(o.terrain))===JSON.stringify(o.terrain);
     const assetValid = !MODEL_ASSET_KINDS.includes(o.kind) || (o.asset && o.asset.format==='obj' && typeof o.asset.name==='string' && o.asset.name.length<=160 && typeof o.asset.data==='string' && o.asset.data.length<=4000000);
     const cameraValid = !CAMERA_KINDS.includes(o.kind) || (o.camera && finite(o.camera.fov) && o.camera.fov >= 10 && o.camera.fov <= 170 &&
       finite(o.camera.near) && o.camera.near >= 0.01 && finite(o.camera.far) && o.camera.far > o.camera.near && o.camera.far <= 10000 && typeof o.camera.primary === 'boolean');
@@ -172,7 +177,7 @@ export function parseScene(text) {
       typeof o.motion?.enabled !== 'boolean' || !finite(o.motion.speed) || o.motion.speed < 0 ||
       !validateModeling(o.kind,o.geometry,o.modifiers) ||
       !Array.isArray(o.scripts) || o.scripts.length > 32 || o.scripts.some(s => !s || typeof s.id !== 'string' || typeof s.path !== 'string' || s.path.length > 240 ||
-        !['lua','c','cpp','csharp','java'].includes(s.language) || typeof s.enabled !== 'boolean') || !lightValid || !assetValid || !cameraValid || !rigValid || !animationValid) throw Error('Objek 3D tidak valid.');
+        !['lua','c','cpp','csharp','java'].includes(s.language) || typeof s.enabled !== 'boolean') || !lightValid || !terrainValid || !assetValid || !cameraValid || !rigValid || !animationValid) throw Error('Objek 3D tidak valid.');
     ids.add(o.id);
   }
   return s;
