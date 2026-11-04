@@ -41,9 +41,9 @@
     <button id="export">Ekspor JSON</button>
     <label class="button">Impor<input id="import" type="file" accept=".json,application/json" hidden></label>
   </header>
-  <main>
-    <aside>
-      <div class="panel-title-row"><h2>World Outliner</h2><button id="hierarchyCreate" class="panel-plus" title="Create GameObject">+</button></div>
+  <main id="levelEditorLayout">
+    <aside id="outlinerPanel">
+      <div class="panel-title-row"><h2>World Outliner</h2><div class="panel-title-actions"><button id="collapseOutliner" class="panel-mini" title="Collapse World Outliner">‹</button><button id="hierarchyCreate" class="panel-plus" title="Create GameObject">+</button></div></div>
       <div class="tools"><button id="box">+ Cube</button><button id="sphere">+ Sphere</button></div>
       <div class="tools"><button id="plane">+ Plane</button><button id="cone">+ Cone</button></div>
       <div class="tools"><button id="torus">+ Torus</button><button id="pointLight">+ Point Light</button></div>
@@ -56,6 +56,7 @@
       <button id="new">Scene Baru</button>
       <button id="demo">Muat demo</button>
     </aside>
+    <div id="leftSplitter" class="workspace-splitter vertical" role="separator" tabindex="0" aria-label="Resize World Outliner" aria-orientation="vertical" aria-valuemin="160" aria-valuemax="480" aria-valuenow="285"></div>
     <section class="viewport">
       <div class="viewbar"><div class="editor-tabs"><button id="sceneTab" class="active">Scene</button><button id="gameTab">Game</button></div><span>Perspektif · WebGL 2</span></div>
       <div class="unreal-viewport-toolbar" aria-label="Viewport controls">
@@ -71,8 +72,9 @@
       <footer id="status" role="status">Siap · scene 3D</footer>
       <div class="help">Orbit: drag · Zoom: scroll · Pan: klik kanan + drag. Pilih objek lalu gunakan gizmo. PLAY: WASD / panah. Stop memulihkan scene. Edit: W/E/R = Move/Rotate/Scale · F = Fokus · Ctrl+Z = Undo.</div>
     </section>
-    <aside>
-      <h2>Details</h2><div id="inspector"></div>
+    <div id="rightSplitter" class="workspace-splitter vertical" role="separator" tabindex="0" aria-label="Resize Details panel" aria-orientation="vertical" aria-valuemin="220" aria-valuemax="520" aria-valuenow="330"></div>
+    <aside id="detailsPanel">
+      <div class="panel-title-row"><h2>Details</h2><button id="collapseDetails" class="panel-mini" title="Collapse Details">›</button></div><div id="inspector"></div>
       <h2>Loading Screen</h2>
       <label>Judul game<input id="gameTitle" maxlength="80" value="Game Saya"></label>
       <label>Durasi minimum<input id="splashDuration" type="number" min="0.5" max="10" step="0.5" value="1.5"></label>
@@ -104,6 +106,7 @@
     <button id="scanToolchains">Scan Toolchains</button>
     <div id="toolchainStatus" class="toolchain-status">Belum dipindai.</div>
   </section>
+  <div id="bottomSplitter" class="workspace-splitter horizontal" role="separator" tabindex="0" aria-label="Resize Content Browser" aria-orientation="horizontal" aria-valuemin="180" aria-valuemax="620" aria-valuenow="320"></div>
   <section id="contentWorkspace" class="project-workspace" aria-label="File dan script proyek">
     <aside class="project-browser">
       <h2>Content Browser</h2><p id="projectTitle"></p>
@@ -126,7 +129,7 @@
       </div>
     </section>
   </section>
-  <div class="engine-dockbar"><button id="contentDrawer">Content Drawer</button><button id="outputLog">Output Log</button><span id="dockStatus">RAVS Engine 3D · Level Editor</span></div>
+  <div class="engine-dockbar"><button id="contentDrawer">Content Drawer</button><button id="outputLog">Output Log</button><button id="resetLayout">Reset Layout</button><span id="dockStatus">RAVS Engine 3D · Level Editor</span></div>
   <div id="splashOverlay" class="splash-overlay" hidden>
     <img id="splashLogo" alt="Logo Ravs"><h1>Ravs</h1><p id="splashTitle"></p><progress id="splashProgress" max="1" value="0"></progress><p>Powered by Ravs</p><button id="closeSplash">Lewati</button>
   </div>
