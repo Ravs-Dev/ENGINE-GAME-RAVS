@@ -3,8 +3,9 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { TransformControls } from 'three/addons/controls/TransformControls.js';
 import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import { MESH_KINDS, LIGHT_KINDS, CAMERA_KINDS, MODEL_ASSET_KINDS } from './scene.js';
+import { MESH_KINDS, LIGHT_KINDS, CAMERA_KINDS, MODEL_ASSET_KINDS, TERRAIN_KINDS } from './scene.js';
 import { modelingSignature, normalizeGeometry, normalizeModifiers } from './modeling.js';
+import { normalizeTerrain, terrainHeight, terrainSignature } from './terrain.js';
 
 function applyModifiers(geometry, rawModifiers){
   const modifiers=normalizeModifiers(rawModifiers),position=geometry.getAttribute('position');
@@ -51,6 +52,12 @@ function geometryFor(object){
   return applyModifiers(geometry,object.modifiers);
 }
 
+
+function terrainGeometry(raw){
+  const t=normalizeTerrain(raw),g=new THREE.PlaneGeometry(t.width,t.depth,t.segments,t.segments);g.rotateX(-Math.PI/2);
+  const p=g.getAttribute('position');for(let i=0;i<p.count;i++){const x=p.getX(i),z=p.getZ(i);p.setY(i,terrainHeight(x,z,t));}
+  p.needsUpdate=true;g.computeVertexNormals();g.computeBoundingBox();g.computeBoundingSphere();return g;
+}
 
 function prepareImportedModel(group,object){
   group.userData.assetSignature=object.asset?.data??'';
@@ -131,6 +138,9 @@ export function createViewport(canvas, onSelect, onTransform, onTransformEnd) {
       node=new THREE.Mesh(geometryFor(o),lit); node.userData.litMaterial=lit; node.userData.unlitMaterial=unlit; node.userData.modelingSignature=modelingSignature(o);
     } else if(MODEL_ASSET_KINDS.includes(o.kind)){
       try{node=prepareImportedModel(new OBJLoader().parse(o.asset?.data??''),o);}catch{node=new THREE.Group();node.userData.assetSignature=o.asset?.data??'';}
+    } else if(TERRAIN_KINDS.includes(o.kind)){
+      const lit=new THREE.MeshStandardMaterial({side:THREE.DoubleSide}),unlit=new THREE.MeshBasicMaterial({side:THREE.DoubleSide});
+      node=new THREE.Mesh(terrainGeometry(o.terrain),lit);node.userData.litMaterial=lit;node.userData.unlitMaterial=unlit;node.userData.terrainSignature=terrainSignature(o.terrain);
     } else if(o.kind==='pointLight'){
       node=new THREE.PointLight(o.light.color,o.light.intensity,o.light.distance,o.light.decay); node.add(new THREE.PointLightHelper(node,.3));
     } else if(o.kind==='directionalLight'){
@@ -159,6 +169,7 @@ export function createViewport(canvas, onSelect, onTransform, onTransformEnd) {
     for(const o of scene.objects){
       let n=nodes.get(o.id);
       if(n&&MODEL_ASSET_KINDS.includes(o.kind)&&n.userData.assetSignature!==(o.asset?.data??'')){dispose(n);nodes.delete(o.id);n=null;}
+      if(n&&TERRAIN_KINDS.includes(o.kind)&&n.userData.terrainSignature!==terrainSignature(o.terrain)){n.geometry?.dispose?.();n.geometry=terrainGeometry(o.terrain);n.userData.terrainSignature=terrainSignature(o.terrain);}
       if(!n||n.userData.kind!==o.kind){if(n){dispose(n);nodes.delete(o.id);}n=createNode(o);}
       n.visible=o.active;n.position.set(o.position.x,o.position.y,o.position.z);n.rotation.set(...['x','y','z'].map(a=>THREE.MathUtils.degToRad(o.rotation[a])));n.scale.set(o.scale.x,o.scale.y,o.scale.z);
       if(MESH_KINDS.includes(o.kind)){
@@ -174,6 +185,9 @@ export function createViewport(canvas, onSelect, onTransform, onTransformEnd) {
       }
       if(MODEL_ASSET_KINDS.includes(o.kind)){
         n.traverse(child=>{if(!child.isMesh)return;const lit=child.userData.litMaterial,unlit=child.userData.unlitMaterial;if(!lit||!unlit)return;lit.color.set(o.color);lit.roughness=o.material.roughness;lit.metalness=o.material.metalness;lit.emissive.set(o.material.emissive);lit.emissiveIntensity=o.material.emissiveIntensity;unlit.color.set(o.color);const wf=wireframe||shading==='wireframe'||o.material.wireframe;lit.wireframe=wf;unlit.wireframe=wf;child.material=shading==='unlit'?unlit:lit;child.castShadow=shadows&&o.render.castShadow;child.receiveShadow=shadows&&o.render.receiveShadow;});
+      }
+      if(TERRAIN_KINDS.includes(o.kind)){
+        const lit=n.userData.litMaterial,unlit=n.userData.unlitMaterial;lit.color.set(o.color);lit.roughness=o.material.roughness;lit.metalness=o.material.metalness;lit.emissive.set(o.material.emissive);lit.emissiveIntensity=o.material.emissiveIntensity;unlit.color.set(o.color);const wf=wireframe||shading==='wireframe'||o.material.wireframe;lit.wireframe=wf;unlit.wireframe=wf;n.material=shading==='unlit'?unlit:lit;n.castShadow=shadows&&o.render.castShadow;n.receiveShadow=shadows&&o.render.receiveShadow;
       }
       if(LIGHT_KINDS.includes(o.kind)){n.color.set(o.light.color);n.intensity=o.light.intensity;n.castShadow=shadows&&o.render.castShadow;if(o.kind==='pointLight'){n.distance=o.light.distance;n.decay=o.light.decay;}}
       if(CAMERA_KINDS.includes(o.kind)){
