@@ -158,7 +158,7 @@ function setWorkspace(mode){
   for(const name of ['Level','Modeling','Animation','Build']) $('workspace'+name)?.classList.toggle('active',workspaceMode===name.toLowerCase());
   $('modelingToolbar').hidden=workspaceMode!=='modeling';
   document.body.classList.toggle('workspace-build-focus',workspaceMode==='build');
-  if(workspaceMode==='build')$('packManagerPanel')?.scrollIntoView({behavior:'smooth',block:'start'});
+  if(workspaceMode==='build')$('buildSettingsPanel')?.scrollIntoView({behavior:'smooth',block:'start'});
   if(workspaceMode==='animation'){const o=scene.objects.find(o=>o.id===selected);status(o?.rig?'Animation workspace · '+o.name+' · '+o.rig.bones.length+' bones':'Animation workspace · pilih object yang memiliki Rig/Armature.');}
   else if(workspaceMode==='modeling')status('Modeling workspace · pilih mesh lalu edit Geometry/Modifiers di Details.');
   else if(workspaceMode==='build')status('Build workspace · periksa feature pack dan toolchain sebelum export.');
