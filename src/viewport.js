@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { TransformControls } from 'three/addons/controls/TransformControls.js';
-import { MESH_KINDS, LIGHT_KINDS } from './scene.js';
+import { MESH_KINDS, LIGHT_KINDS, CAMERA_KINDS } from './scene.js';
 import { modelingSignature, normalizeGeometry, normalizeModifiers } from './modeling.js';
 
 function applyModifiers(geometry, rawModifiers){
@@ -107,8 +107,13 @@ export function createViewport(canvas, onSelect, onTransform, onTransformEnd) {
       node=new THREE.Mesh(geometryFor(o),lit); node.userData.litMaterial=lit; node.userData.unlitMaterial=unlit; node.userData.modelingSignature=modelingSignature(o);
     } else if(o.kind==='pointLight'){
       node=new THREE.PointLight(o.light.color,o.light.intensity,o.light.distance,o.light.decay); node.add(new THREE.PointLightHelper(node,.3));
-    } else {
+    } else if(o.kind==='directionalLight'){
       node=new THREE.DirectionalLight(o.light.color,o.light.intensity); node.add(new THREE.DirectionalLightHelper(node,.7));
+    } else {
+      node=new THREE.Group();
+      const previewCamera=new THREE.PerspectiveCamera(o.camera?.fov??60,1,o.camera?.near??0.1,o.camera?.far??2000);
+      previewCamera.rotation.y=Math.PI;
+      const helper=new THREE.CameraHelper(previewCamera);helper.userData.id=o.id;node.add(previewCamera,helper);node.userData.previewCamera=previewCamera;node.userData.cameraHelper=helper;
     }
     node.userData.id=o.id;node.userData.kind=o.kind;nodes.set(o.id,node);group.add(node);return node;
   }
@@ -140,6 +145,9 @@ export function createViewport(canvas, onSelect, onTransform, onTransformEnd) {
         n.castShadow=shadows&&o.render.castShadow;n.receiveShadow=shadows&&o.render.receiveShadow;updateRigHelper(n,o.rig);
       }
       if(LIGHT_KINDS.includes(o.kind)){n.color.set(o.light.color);n.intensity=o.light.intensity;n.castShadow=shadows&&o.render.castShadow;if(o.kind==='pointLight'){n.distance=o.light.distance;n.decay=o.light.decay;}}
+      if(CAMERA_KINDS.includes(o.kind)){
+        const pc=n.userData.previewCamera;if(pc){pc.fov=o.camera.fov;pc.near=o.camera.near;pc.far=o.camera.far;pc.updateProjectionMatrix();n.userData.cameraHelper?.update();}
+      }
     }
     const n=nodes.get(selected);if(n&&n.visible&&!playing){if(gizmo.object!==n)gizmo.attach(n);outline.setFromObject(n);outline.visible=true;}else{gizmo.detach();outline.visible=false;}
   }
