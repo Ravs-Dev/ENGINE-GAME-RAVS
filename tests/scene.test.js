@@ -98,3 +98,9 @@ test('modeled primitive geometry and modifiers roundtrip',()=>{
   assert.equal(loaded.objects[0].geometry.heightSegments,4);
   assert.equal(loaded.objects[0].modifiers.twist.angle,90);
 });
+
+test('terrain actor configuration roundtrip',()=>{
+  const s=demoScene(),terrain=createObject('terrain');terrain.terrain={width:80,depth:60,segments:32,height:8,frequency:.08,seed:42};s.objects.push(terrain);
+  const loaded=parseScene(JSON.stringify(s));const t=loaded.objects.at(-1);
+  assert.equal(t.kind,'terrain');assert.equal(t.terrain.width,80);assert.equal(t.terrain.seed,42);
+});
