@@ -10,6 +10,7 @@
 - Add Camera Actors with FOV, near/far clipping and Main Camera selection.
 - Use the active Main Camera in built/exported games, with orbit camera fallback when none exists.
 - Add embedded OBJ import from the Modeling workspace.
+- Add procedural Terrain Actors with editable size, resolution, height, frequency and seed.
 - Render imported OBJ models in both the editor viewport and exported game runtime.
 - Add Camera Preview from Camera Actor inspector.
 - Add editable Animation Clip controls for rigged objects.
