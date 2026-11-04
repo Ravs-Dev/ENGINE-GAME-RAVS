@@ -15,7 +15,8 @@ function rigParentsValid(rig) {
 }
 export const MESH_KINDS = [...MODEL_KINDS];
 export const LIGHT_KINDS = ['pointLight', 'directionalLight'];
-const ALL_KINDS = [...MESH_KINDS, ...LIGHT_KINDS];
+export const CAMERA_KINDS = ['camera'];
+const ALL_KINDS = [...MESH_KINDS, ...LIGHT_KINDS, ...CAMERA_KINDS];
 
 export function defaultEnvironment() {
   return {
@@ -69,7 +70,7 @@ export function createAnimationController() {
 
 export function createObject(kind = 'box', id = crypto.randomUUID()) {
   if (!ALL_KINDS.includes(kind)) kind = 'box';
-  const names = { box: 'Cube', sphere: 'Sphere', cylinder: 'Cylinder', plane: 'Plane', cone: 'Cone', torus: 'Torus', pointLight: 'Point Light', directionalLight: 'Directional Light' };
+  const names = { box: 'Cube', sphere: 'Sphere', cylinder: 'Cylinder', plane: 'Plane', cone: 'Cone', torus: 'Torus', pointLight: 'Point Light', directionalLight: 'Directional Light', camera:'Camera' };
   const object = {
     id, name: names[kind], kind, active: true, tag: 'Untagged', layer: 0,
     position: { x: 0, y: 1, z: 0 }, rotation: { x: 0, y: 0, z: 0 }, scale: { x: 1, y: 1, z: 1 },
@@ -85,6 +86,7 @@ export function createObject(kind = 'box', id = crypto.randomUUID()) {
     modifiers: MESH_KINDS.includes(kind) ? defaultModifiers() : null
   };
   if (LIGHT_KINDS.includes(kind)) object.light = { color: '#ffffff', intensity: kind === 'pointLight' ? 4 : 3, distance: kind === 'pointLight' ? 20 : 0, decay: 2 };
+  if (CAMERA_KINDS.includes(kind)) object.camera = { fov:60, near:0.1, far:2000, primary:true };
   return object;
 }
 
@@ -117,6 +119,7 @@ function applyDefaults(s) {
     if (MESH_KINDS.includes(o.kind)) { o.geometry = normalizeGeometry(o.kind,o.geometry ?? defaultGeometry(o.kind)); o.modifiers = normalizeModifiers(o.modifiers ?? defaultModifiers()); }
     else { o.geometry ??= null; o.modifiers ??= null; }
     if (LIGHT_KINDS.includes(o.kind)) o.light = { color: '#ffffff', intensity: o.kind === 'pointLight' ? 4 : 3, distance: o.kind === 'pointLight' ? 20 : 0, decay: 2, ...(o.light ?? {}) };
+    if (CAMERA_KINDS.includes(o.kind)) o.camera = { fov:60, near:0.1, far:2000, primary:true, ...(o.camera ?? {}) };
   }
   return s;
 }
@@ -137,6 +140,8 @@ export function parseScene(text) {
   for (const o of s.objects) {
     const lightValid = !LIGHT_KINDS.includes(o.kind) || (o.light && color(o.light.color) && finite(o.light.intensity) && o.light.intensity >= 0 && o.light.intensity <= 100 &&
       finite(o.light.distance) && o.light.distance >= 0 && finite(o.light.decay) && o.light.decay >= 0 && o.light.decay <= 10);
+    const cameraValid = !CAMERA_KINDS.includes(o.kind) || (o.camera && finite(o.camera.fov) && o.camera.fov >= 10 && o.camera.fov <= 170 &&
+      finite(o.camera.near) && o.camera.near >= 0.01 && finite(o.camera.far) && o.camera.far > o.camera.near && o.camera.far <= 10000 && typeof o.camera.primary === 'boolean');
     const rigValid = o.rig === null || (MESH_KINDS.includes(o.kind) && o.rig && typeof o.rig.enabled === 'boolean' && ['generic','humanoid'].includes(o.rig.type) &&
       typeof o.rig.rootBone === 'string' && Array.isArray(o.rig.bones) && o.rig.bones.length > 0 && o.rig.bones.length <= 256 &&
       new Set(o.rig.bones.map(b=>b.id)).size === o.rig.bones.length &&
@@ -162,7 +167,7 @@ export function parseScene(text) {
       typeof o.motion?.enabled !== 'boolean' || !finite(o.motion.speed) || o.motion.speed < 0 ||
       !validateModeling(o.kind,o.geometry,o.modifiers) ||
       !Array.isArray(o.scripts) || o.scripts.length > 32 || o.scripts.some(s => !s || typeof s.id !== 'string' || typeof s.path !== 'string' || s.path.length > 240 ||
-        !['lua','c','cpp','csharp','java'].includes(s.language) || typeof s.enabled !== 'boolean') || !lightValid || !rigValid || !animationValid) throw Error('Objek 3D tidak valid.');
+        !['lua','c','cpp','csharp','java'].includes(s.language) || typeof s.enabled !== 'boolean') || !lightValid || !cameraValid || !rigValid || !animationValid) throw Error('Objek 3D tidak valid.');
     ids.add(o.id);
   }
   return s;
