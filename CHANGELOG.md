@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.9.1
+
+- Install downloaded .ravspack manifests into the desktop app data directory.
+- Restore installed feature-pack state automatically when RAVS Engine starts.
+- Add pack uninstall support for desktop-installed engine packs.
+- Keep external SDK packs verified through real toolchain detection instead of fake install flags.
+
+
 ## 0.9.0
 
 - Add Feature Pack Manager for optional engine data and external platform/toolchain dependencies.
