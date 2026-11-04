@@ -219,6 +219,8 @@ test('feature pack manager and humanoid rig workflow', async ({ page }) => {
   await page.locator('#hierarchy button').filter({hasText:'Player'}).click();
   await page.getByRole('button',{name:'+ Humanoid Rig'}).click();
   await expect(page.locator('#inspector')).toContainText('18 bones');
+  await page.locator('#exportGame').click();
+  await expect(page.locator('#status')).toContainText('Build diblokir');
   const required=await page.evaluate(()=>JSON.parse(localStorage.getItem('ravs.scene.3d.v2')||'null'));
   await page.locator('#save').click();
   const saved=await page.evaluate(()=>JSON.parse(localStorage.getItem('ravs.scene.3d.v2')));
