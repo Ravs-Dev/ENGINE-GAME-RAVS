@@ -4,7 +4,7 @@
 
 - Add Level, Modeling, Animation and Build workspace tabs.
 - Add parametric modeling controls for Cube, Sphere, Cylinder, Plane, Cone and Torus.
-- Add real-time Twist and Taper geometry modifiers with X/Y/Z axis control.
+- Add real-time Twist, Taper and Mirror geometry modifiers with X/Y/Z axis control.
 - Rebuild modeled geometry live in the editor and preserve it in exported games.
 - Add Modeling toolbar actions for primitive creation, duplicate, center, drop-to-ground and transform resets.
 - Add Camera Actors with FOV, near/far clipping and Main Camera selection.
