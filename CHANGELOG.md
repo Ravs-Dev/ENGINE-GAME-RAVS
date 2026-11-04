@@ -10,6 +10,7 @@
 - Add .ravspack manifest import/registration and feature pack readiness states.
 - Keep heavy engine data separate from the core editor installer.
 - Block game export when a required feature pack is missing; engine packs become ready only after a .ravspack manifest is imported.
+- Add desktop installation/removal of downloaded .ravspack manifests under the app data directory and restore installed pack state at startup.
 
 
 ## 0.8.0
