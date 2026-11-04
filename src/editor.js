@@ -10,6 +10,7 @@ import { MODEL_KINDS, defaultGeometry, defaultModifiers, normalizeGeometry, norm
 import { defaultTerrain, normalizeTerrain } from './terrain.js';
 import { defaultParticle, normalizeParticle } from './particles.js';
 import { listPrefabs, savePrefab, instantiatePrefab, removePrefab, listMaterials, saveMaterial, applyMaterialPreset, removeMaterial } from './assets-library.js';
+import { BUILD_TARGETS, readBuildSettings, writeBuildSettings } from './build-settings.js';
 const $ = id => document.getElementById(id);
 const keys = new Set(), storageKey = 'ravs.scene.3d.v2';
 const layoutStorageKey = 'ravs.layout.v1';
@@ -51,6 +52,7 @@ function restoreHistory(direction) {
   if (state) { scene = state.scene; selected = state.selected; refresh(); status(direction === 'undo' ? 'Perubahan dibatalkan.' : 'Perubahan diulangi.'); }
 }
 let projectPanel;
+let buildSettings=readBuildSettings();
 let splash = { title: 'Game Saya', duration: 1.5 };
 try { const saved = localStorage.getItem('ravs.splash.v1'); if (saved) splash = validateSplash(JSON.parse(saved)); } catch { /* Keep defaults if settings are corrupt. */ }
 $('brandLogo').src = logo;
@@ -613,6 +615,27 @@ setWorkspace('level'); updatePlayUI(); refresh(); requestAnimationFrame(frame);
 
 let detectedToolchains = [];
 let packState = readPackState();
+function renderBuildSettings(){
+  if(!$('buildTargetCards'))return;
+  $('buildTarget').value=buildSettings.target;$('buildQuality').value=buildSettings.quality;$('buildWidth').value=buildSettings.width;$('buildHeight').value=buildSettings.height;$('buildFullscreen').checked=buildSettings.fullscreen;$('buildDevelopment').checked=buildSettings.development;
+  const box=$('buildTargetCards');box.replaceChildren();
+  for(const target of BUILD_TARGETS){
+    const requirements=target.requiredPacks??[];
+    const missing=requirements.filter(id=>{const pack=FEATURE_PACKS.find(p=>p.id===id);return !pack||!isPackReady(pack,packState,detectedToolchains);});
+    const nativeReady=target.id==='web';
+    const card=document.createElement('button');card.type='button';card.className='build-target-card'+(buildSettings.target===target.id?' active':'');
+    const name=document.createElement('strong');name.textContent=target.icon+' · '+target.name;const desc=document.createElement('small');desc.textContent=target.description;
+    const state=document.createElement('span');state.className='target-state '+(nativeReady?'ready':'pending');state.textContent=nativeReady?'Ready to build':missing.length?'Missing: '+missing.map(id=>FEATURE_PACKS.find(p=>p.id===id)?.name??id).join(', '):'Native runtime pipeline not available yet';
+    card.append(name,desc,state);card.onclick=()=>{buildSettings=writeBuildSettings({...buildSettings,target:target.id});renderBuildSettings();};box.append(card);
+  }
+  const current=BUILD_TARGETS.find(t=>t.id===buildSettings.target);
+  $('buildReadiness').textContent=buildSettings.target==='web'?'Web / HTML5 target ready. Build menghasilkan standalone game-ravs.html dengan WebGL 2.':current.name+' dipilih. Dependency dapat dipasang lewat Feature Pack Manager, tetapi native game runtime/compiler target ini belum diimplementasikan sehingga Build tetap diblokir.';
+  $('buildNow').disabled=buildSettings.target!=='web';
+}
+function saveBuildSettingsFromUI(){
+  buildSettings=writeBuildSettings({target:$('buildTarget').value,quality:$('buildQuality').value,width:Number($('buildWidth').value),height:Number($('buildHeight').value),fullscreen:$('buildFullscreen').checked,development:$('buildDevelopment').checked});renderBuildSettings();
+}
+
 async function syncDesktopPacks(){
   if(!window.ravsDesktop?.listPacks)return;
   const result=await window.ravsDesktop.listPacks();
@@ -620,7 +643,7 @@ async function syncDesktopPacks(){
   const next={...packState};
   for(const pack of FEATURE_PACKS) if(pack.kind==='engine') delete next[pack.id];
   for(const item of result.data) next[item.id]={installed:true,version:item.version,desktop:true};
-  packState=next;writePackState(packState);renderPackManager();
+  packState=next;writePackState(packState);renderPackManager();renderBuildSettings();
 }
 function renderPackManager(){
   const list=$('packList'); if(!list)return; list.replaceChildren();
@@ -666,17 +689,20 @@ $('featurePackImport').onchange=async e=>{
   }catch(error){status('Import pack gagal: '+error.message);} finally {e.target.value='';}
 };
 renderPackManager();
+renderBuildSettings();
 renderAssetLibrary();
 syncDesktopPacks();
 
 const toolchainNames = { lua:'Lua', c:'C', cpp:'C++', csharp:'C#', java:'Java' };
+for(const id of ['buildTarget','buildQuality','buildWidth','buildHeight','buildFullscreen','buildDevelopment']) $(id).onchange=saveBuildSettingsFromUI;
+$('buildNow').onclick=()=>{if(buildSettings.target==='web')$('exportGame').click();else status('Build diblokir: native runtime '+buildSettings.target+' belum tersedia. Gunakan Feature Pack Manager untuk dependency dan tunggu pipeline native RAVS tersedia.');};
 $('scanToolchains').onclick = async () => {
   const box = $('toolchainStatus');
   if (!window.ravsDesktop?.scanToolchains) { box.textContent = 'Toolchain scan hanya tersedia pada aplikasi desktop.'; return; }
   box.textContent = 'Memindai...';
   const result = await window.ravsDesktop.scanToolchains();
   if (!result.ok) { box.textContent = result.error; return; }
-  detectedToolchains = result.data; renderPackManager();
+  detectedToolchains = result.data; renderPackManager(); renderBuildSettings();
   box.replaceChildren();
   for (const item of result.data) {
     const row = document.createElement('div'); row.className = 'toolchain-row';
