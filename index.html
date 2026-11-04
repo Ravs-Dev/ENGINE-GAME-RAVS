@@ -75,11 +75,10 @@
     <div id="rightSplitter" class="workspace-splitter vertical" role="separator" tabindex="0" aria-label="Resize Details panel" aria-orientation="vertical" aria-valuemin="220" aria-valuemax="520" aria-valuenow="330"></div>
     <aside id="detailsPanel">
       <div class="panel-title-row"><h2>Details</h2><button id="collapseDetails" class="panel-mini" title="Collapse Details">›</button></div><div id="inspector"></div>
-      <h2>Loading Screen</h2>
+      <h2>Game Startup Branding</h2>
       <label>Judul game<input id="gameTitle" maxlength="80" value="Game Saya"></label>
-      <label>Durasi minimum<input id="splashDuration" type="number" min="0.5" max="10" step="0.5" value="1.5"></label>
-      <button id="previewSplash">Pratinjau Loading</button>
-      <p>Logo dan nama Ravs tampil sebelum game. Ekspor HTML menyertakan loading screen ini.</p>
+      <label>Durasi splash RAVS<input id="splashDuration" type="number" min="0.5" max="10" step="0.5" value="1.5"></label>
+      <p>Logo RAVS dan teks “Made with RAVS Engine” hanya tampil pada game hasil build/export. Play dan Simulate di editor langsung menjalankan game tanpa splash.</p>
       <h2>Viewport</h2>
       <label>Wireframe<input id="wireframe" type="checkbox"></label>
       <label>Bayangan<input id="shadows" type="checkbox" checked></label>
@@ -136,9 +135,6 @@
     </section>
   </section>
   <div class="engine-dockbar"><button id="contentDrawer">Content Drawer</button><button id="outputLog">Output Log</button><button id="maximizeViewport">Maximize Viewport</button><label class="dock-layout-label">Layout <select id="layoutPreset"><option value="custom">Custom</option><option value="level">Level Editing</option><option value="scripting">Scripting</option><option value="cinematic">Cinematic</option></select></label><button id="resetLayout">Reset Layout</button><span id="dockStatus">RAVS Engine 3D · Level Editor</span></div>
-  <div id="splashOverlay" class="splash-overlay" hidden>
-    <img id="splashLogo" alt="Logo Ravs"><h1>Ravs</h1><p id="splashTitle"></p><progress id="splashProgress" max="1" value="0"></progress><p>Powered by Ravs</p><button id="closeSplash">Lewati</button>
-  </div>
   <script type="module" src="./build/renderer.js"></script>
 </body>
 </html>

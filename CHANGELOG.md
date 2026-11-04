@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.9.2
+
+- Move RAVS splash branding out of the editor Play/Simulate flow.
+- Keep RAVS branding only in built/exported games at startup.
+- Exported games now show the RAVS logo with “Made with RAVS Engine” before the first scene runs.
+- Keep the game title configurable while the RAVS engine branding remains part of the generated game startup.
+- Update tests to ensure editor Play has no splash and exported games still include the RAVS startup screen.
+
+
 ## 0.9.1
 
 - Install downloaded .ravspack manifests into the desktop app data directory.
