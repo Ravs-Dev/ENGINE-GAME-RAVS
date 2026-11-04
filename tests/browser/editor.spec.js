@@ -234,3 +234,22 @@ test('feature pack manager and humanoid rig workflow', async ({ page }) => {
   await page.locator('#featurePackImport').setInputFiles({name:'character.ravspack',mimeType:'application/json',buffer:Buffer.from(JSON.stringify({id:'character-animation',version:'0.9.0'}))});
   await expect(page.locator('#packList .pack-card.ready')).toContainText('Character & Animation Pack');
 });
+
+test('modeling workspace edits geometry, imports OBJ and adds a main camera',async({page})=>{
+  await page.goto('/');
+  await page.locator('#workspaceModeling').click();
+  await expect(page.locator('#modelingToolbar')).toBeVisible();
+  await page.locator('#modelPrimitive').selectOption('sphere');
+  await page.locator('#modelAdd').click();
+  await expect(page.locator('#inspector')).toContainText('Modeling · Geometry');
+  const radiusRow=page.locator('#inspector label').filter({hasText:'Radius'}).first().locator('input');
+  await radiusRow.fill('2');await radiusRow.dispatchEvent('change');
+  const twist=page.locator('.modifier-card').filter({hasText:'Twist Modifier'}).locator('input[type=checkbox]');
+  await twist.check();
+  await page.locator('#modelImportObj').setInputFiles({name:'triangle.obj',mimeType:'text/plain',buffer:Buffer.from('v 0 0 0\nv 1 0 0\nv 0 1 0\nf 1 2 3\n')});
+  await expect(page.locator('#hierarchy')).toContainText('triangle');
+  await page.locator('#cameraActor').click();
+  await expect(page.locator('#inspector')).toContainText('Camera');
+  await page.getByRole('button',{name:'Set as Main Camera'}).click();
+  await expect(page.locator('#inspector')).toContainText('Field of View');
+});
