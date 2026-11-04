@@ -1,3 +1,4 @@
+import { MODEL_KINDS, defaultGeometry, defaultModifiers, normalizeGeometry, normalizeModifiers, validateModeling } from './modeling.js';
 const finite = n => typeof n === 'number' && Number.isFinite(n) && Math.abs(n) <= 10000;
 const color = value => typeof value === 'string' && /^#[0-9a-f]{6}$/i.test(value);
 function rigParentsValid(rig) {
@@ -12,7 +13,7 @@ function rigParentsValid(rig) {
   };
   return rig.bones.every(visit);
 }
-export const MESH_KINDS = ['box', 'sphere', 'cylinder', 'plane', 'cone', 'torus'];
+export const MESH_KINDS = [...MODEL_KINDS];
 export const LIGHT_KINDS = ['pointLight', 'directionalLight'];
 const ALL_KINDS = [...MESH_KINDS, ...LIGHT_KINDS];
 
@@ -79,7 +80,9 @@ export function createObject(kind = 'box', id = crypto.randomUUID()) {
     motion: { enabled: false, speed: 4 },
     scripts: [],
     rig: null,
-    animation: null
+    animation: null,
+    geometry: MESH_KINDS.includes(kind) ? defaultGeometry(kind) : null,
+    modifiers: MESH_KINDS.includes(kind) ? defaultModifiers() : null
   };
   if (LIGHT_KINDS.includes(kind)) object.light = { color: '#ffffff', intensity: kind === 'pointLight' ? 4 : 3, distance: kind === 'pointLight' ? 20 : 0, decay: 2 };
   return object;
@@ -111,6 +114,8 @@ function applyDefaults(s) {
     o.scripts ??= [];
     o.rig ??= null;
     o.animation ??= null;
+    if (MESH_KINDS.includes(o.kind)) { o.geometry = normalizeGeometry(o.kind,o.geometry ?? defaultGeometry(o.kind)); o.modifiers = normalizeModifiers(o.modifiers ?? defaultModifiers()); }
+    else { o.geometry ??= null; o.modifiers ??= null; }
     if (LIGHT_KINDS.includes(o.kind)) o.light = { color: '#ffffff', intensity: o.kind === 'pointLight' ? 4 : 3, distance: o.kind === 'pointLight' ? 20 : 0, decay: 2, ...(o.light ?? {}) };
   }
   return s;
@@ -155,6 +160,7 @@ export function parseScene(text) {
       !o.render || typeof o.render.castShadow !== 'boolean' || typeof o.render.receiveShadow !== 'boolean' ||
       typeof o.body?.enabled !== 'boolean' || !finite(o.body.vy) || !finite(o.body.bounce) || o.body.bounce < 0 || o.body.bounce > 1 ||
       typeof o.motion?.enabled !== 'boolean' || !finite(o.motion.speed) || o.motion.speed < 0 ||
+      !validateModeling(o.kind,o.geometry,o.modifiers) ||
       !Array.isArray(o.scripts) || o.scripts.length > 32 || o.scripts.some(s => !s || typeof s.id !== 'string' || typeof s.path !== 'string' || s.path.length > 240 ||
         !['lua','c','cpp','csharp','java'].includes(s.language) || typeof s.enabled !== 'boolean') || !lightValid || !rigValid || !animationValid) throw Error('Objek 3D tidak valid.');
     ids.add(o.id);
