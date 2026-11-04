@@ -2,7 +2,7 @@ import logo from '../assets/ravs-logo.png';
 import { createProjectPanel } from './project-panel.js';
 import { createGameHTML, validateSplash } from './game-export.js';
 import { download } from './project.js';
-import { createObject, createScene, createHumanoidRig, createAnimationController, demoScene, parseScene, step, LIGHT_KINDS, CAMERA_KINDS } from './scene.js';
+import { createObject, createScene, createHumanoidRig, createAnimationController, demoScene, parseScene, step, LIGHT_KINDS, CAMERA_KINDS, MODEL_ASSET_KINDS } from './scene.js';
 import { History } from './history.js';
 import { createViewport } from './viewport.js';
 import { FEATURE_PACKS, readPackState, writePackState, isPackReady } from './feature-packs.js';
@@ -164,6 +164,12 @@ function refresh() {
     field(inspector, 'Layer', o, 'layer', 'number', 0, 31);
     field(inspector, 'Warna', o, 'color', 'color');
     appendModelingInspector(inspector,o);
+    if(MODEL_ASSET_KINDS.includes(o.kind)){
+      const asset=document.createElement('section');asset.className='modeling-section';
+      const h=document.createElement('h3');h.textContent='Imported Model';asset.append(h);
+      const p=document.createElement('p');p.textContent=(o.asset?.name??'model.obj')+' · OBJ · '+Math.max(1,Math.round((o.asset?.data?.length??0)/1024))+' KB embedded';asset.append(p);
+      inspector.append(asset);
+    }
     if (LIGHT_KINDS.includes(o.kind)) {
       const lt = document.createElement('h2'); lt.textContent = 'Light'; inspector.append(lt);
       field(inspector, 'Color', o.light, 'color', 'color');
@@ -193,7 +199,7 @@ function refresh() {
     field(inspector, 'Bounce', o.body, 'bounce', 'number', 0, 1);
     field(inspector, 'Controller', o.motion, 'enabled', 'checkbox');
     field(inspector, 'Kecepatan', o.motion, 'speed', 'number', 0, 100);
-    if (!LIGHT_KINDS.includes(o.kind) && !CAMERA_KINDS.includes(o.kind)) {
+    if (MODEL_KINDS.includes(o.kind)) {
       const rt=document.createElement('h2'); rt.textContent='Rig / Armature'; inspector.append(rt);
       if (!o.rig) {
         const addRig=document.createElement('button'); addRig.textContent='+ Humanoid Rig';
@@ -533,7 +539,15 @@ $('workspaceModeling').onclick=()=>setWorkspace('modeling');
 $('workspaceAnimation').onclick=()=>setWorkspace('animation');
 $('workspaceBuild').onclick=()=>setWorkspace('build');
 $('modelAdd').onclick=()=>{if(backup)return;const o=createObject($('modelPrimitive').value);scene.objects.push(o);selected=o.id;record();refresh();status(o.name+' ditambahkan dari Modeling toolbar.');};
-$('modelDuplicate').onclick=()=>{if(backup)return;const o=selectedModel();if(!o){status('Pilih mesh untuk Duplicate.');return;}const n=structuredClone(o);n.id=crypto.randomUUID();n.name+=' Copy';n.position.x+=1;scene.objects.push(n);selected=n.id;record();refresh();};
+$('modelImportObj').onchange=async e=>{
+  try{
+    const file=e.target.files?.[0];if(!file)return;
+    if(file.size>4_000_000)throw Error('OBJ maksimal 4 MB untuk embedded scene.');
+    const data=await file.text();if(!/(^|\n)\s*v\s+[-+0-9.]/.test(data))throw Error('File tidak terlihat seperti OBJ yang valid.');
+    const o=createObject('model');o.name=file.name.replace(/\.obj$/i,'')||'Imported Model';o.asset={format:'obj',name:file.name.slice(0,160),data};scene.objects.push(o);selected=o.id;record();refresh();status('OBJ '+file.name+' berhasil diimpor.');
+  }catch(error){status('Import OBJ gagal: '+error.message);}finally{e.target.value='';}
+};
+$('modelDuplicate').onclick=()=>{if(backup)return;const o=scene.objects.find(item=>item.id===selected&&(MODEL_KINDS.includes(item.kind)||MODEL_ASSET_KINDS.includes(item.kind)));if(!o){status('Pilih mesh/model untuk Duplicate.');return;}const n=structuredClone(o);n.id=crypto.randomUUID();n.name+=' Copy';n.position.x+=1;scene.objects.push(n);selected=n.id;record();refresh();};
 $('modelCenter').onclick=()=>{const o=selectedModel();if(!o||backup)return;o.position.x=0;o.position.z=0;record();refresh();status(o.name+' dipusatkan ke X/Z 0.');};
 $('modelGround').onclick=()=>{const o=selectedModel();if(!o||backup)return;o.position.y=estimatedHalfHeight(o);record();refresh();status(o.name+' ditempatkan di ground.');};
 $('modelResetRotation').onclick=()=>{const o=selectedModel();if(!o||backup)return;o.rotation={x:0,y:0,z:0};record();refresh();};
