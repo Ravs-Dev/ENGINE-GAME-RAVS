@@ -1,4 +1,4 @@
-const { app, BrowserWindow, Menu, dialog, session, ipcMain } = require('electron');
+const { app, BrowserWindow, Menu, dialog, session, ipcMain, shell } = require('electron');
 const path = require('node:path');
 const { execFile } = require('node:child_process');
 const { promisify } = require('node:util');
@@ -41,6 +41,13 @@ app.whenReady().then(() => {
   handler('project:read', relative => projectStore.read(relative));
   handler('project:create', (relative, type, content) => projectStore.create(relative, type, content));
   handler('project:write', (relative, content, revision) => projectStore.write(relative, content, revision));
+  handler('external:open', async raw => {
+    const url = new URL(String(raw));
+    const allowed = new Set(['github.com','developer.android.com','visualstudio.microsoft.com','dotnet.microsoft.com','adoptium.net']);
+    if (url.protocol !== 'https:' || !allowed.has(url.hostname)) throw Error('Link eksternal tidak diizinkan.');
+    await shell.openExternal(url.toString());
+    return true;
+  });
   handler('toolchains:scan', async () => {
     const specs = [
       { language:'lua', commands:[['lua',['-v']]] },
