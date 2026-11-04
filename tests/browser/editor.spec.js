@@ -199,4 +199,16 @@ test('workspace splitters resize, collapse and persist editor layout', async ({ 
   await page.locator('#resetLayout').click();
   const reset = await page.evaluate(() => JSON.parse(localStorage.getItem('ravs.layout.v1')));
   expect(reset.left).toBe(285); expect(reset.right).toBe(330); expect(reset.bottom).toBe(320);
+  await page.locator('#contentSplitter').focus(); await page.keyboard.press('ArrowRight');
+  let advanced = await page.evaluate(() => JSON.parse(localStorage.getItem('ravs.layout.v1')));
+  expect(advanced.contentLeft).toBeGreaterThan(320);
+  await page.locator('#toolchainSplitter').focus(); await page.keyboard.press('ArrowUp');
+  advanced = await page.evaluate(() => JSON.parse(localStorage.getItem('ravs.layout.v1')));
+  expect(advanced.toolchainHeight).toBeGreaterThan(112);
+  await page.locator('#collapseToolchain').click(); await expect(page.locator('#toolchainPanel')).toBeHidden();
+  await page.locator('#toolchainSplitter').click(); await expect(page.locator('#toolchainPanel')).toBeVisible();
+  await page.locator('#layoutPreset').selectOption('scripting');
+  await expect(page.locator('#layoutPreset')).toHaveValue('scripting');
+  await page.locator('#maximizeViewport').click(); await expect(page.locator('body')).toHaveClass(/viewport-maximized/);
+  await page.locator('#maximizeViewport').click(); await expect(page.locator('body')).not.toHaveClass(/viewport-maximized/);
 });
