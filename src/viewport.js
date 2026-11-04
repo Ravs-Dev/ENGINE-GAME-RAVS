@@ -3,9 +3,10 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { TransformControls } from 'three/addons/controls/TransformControls.js';
 import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import { MESH_KINDS, LIGHT_KINDS, CAMERA_KINDS, MODEL_ASSET_KINDS, TERRAIN_KINDS } from './scene.js';
+import { MESH_KINDS, LIGHT_KINDS, CAMERA_KINDS, MODEL_ASSET_KINDS, TERRAIN_KINDS, PARTICLE_KINDS } from './scene.js';
 import { modelingSignature, normalizeGeometry, normalizeModifiers } from './modeling.js';
 import { normalizeTerrain, terrainHeight, terrainSignature } from './terrain.js';
+import { normalizeParticle, particleSignature, seeded } from './particles.js';
 
 function applyModifiers(geometry, rawModifiers){
   const modifiers=normalizeModifiers(rawModifiers),position=geometry.getAttribute('position');
@@ -52,6 +53,27 @@ function geometryFor(object){
   return applyModifiers(geometry,object.modifiers);
 }
 
+
+
+function particleNode(object){
+  const p=normalizeParticle(object.particle),geometry=new THREE.BufferGeometry(),positions=new Float32Array(p.count*3);
+  geometry.setAttribute('position',new THREE.BufferAttribute(positions,3));
+  const material=new THREE.PointsMaterial({color:p.color,size:p.size,sizeAttenuation:true,transparent:true,opacity:.9,depthWrite:false});
+  const points=new THREE.Points(geometry,material);
+  points.userData.particleSignature=particleSignature(object.particle);
+  points.userData.particleConfig=p;
+  return points;
+}
+function updateParticleNode(node,time){
+  const p=node.userData.particleConfig,positions=node.geometry.getAttribute('position'),seconds=time/1000;
+  for(let i=0;i<positions.count;i++){
+    const offset=seeded(i,p.seed)*p.lifetime,phase=p.loop?(seconds+offset)%p.lifetime:Math.min(p.lifetime,seconds+offset),age=Math.min(1,phase/p.lifetime);
+    const angle=seeded(i+1000,p.seed)*Math.PI*2,radius=seeded(i+2000,p.seed)*p.spread*age;
+    const x=Math.cos(angle)*radius,z=Math.sin(angle)*radius,y=phase*p.speed+.5*p.gravity*phase*phase;
+    positions.setXYZ(i,x,y,z);
+  }
+  positions.needsUpdate=true;
+}
 
 function terrainGeometry(raw){
   const t=normalizeTerrain(raw),g=new THREE.PlaneGeometry(t.width,t.depth,t.segments,t.segments);g.rotateX(-Math.PI/2);
@@ -141,6 +163,8 @@ export function createViewport(canvas, onSelect, onTransform, onTransformEnd) {
     } else if(TERRAIN_KINDS.includes(o.kind)){
       const lit=new THREE.MeshStandardMaterial({side:THREE.DoubleSide}),unlit=new THREE.MeshBasicMaterial({side:THREE.DoubleSide});
       node=new THREE.Mesh(terrainGeometry(o.terrain),lit);node.userData.litMaterial=lit;node.userData.unlitMaterial=unlit;node.userData.terrainSignature=terrainSignature(o.terrain);
+    } else if(PARTICLE_KINDS.includes(o.kind)){
+      node=particleNode(o);
     } else if(o.kind==='pointLight'){
       node=new THREE.PointLight(o.light.color,o.light.intensity,o.light.distance,o.light.decay); node.add(new THREE.PointLightHelper(node,.3));
     } else if(o.kind==='directionalLight'){
@@ -170,6 +194,7 @@ export function createViewport(canvas, onSelect, onTransform, onTransformEnd) {
       let n=nodes.get(o.id);
       if(n&&MODEL_ASSET_KINDS.includes(o.kind)&&n.userData.assetSignature!==(o.asset?.data??'')){dispose(n);nodes.delete(o.id);n=null;}
       if(n&&TERRAIN_KINDS.includes(o.kind)&&n.userData.terrainSignature!==terrainSignature(o.terrain)){n.geometry?.dispose?.();n.geometry=terrainGeometry(o.terrain);n.userData.terrainSignature=terrainSignature(o.terrain);}
+      if(n&&PARTICLE_KINDS.includes(o.kind)&&n.userData.particleSignature!==particleSignature(o.particle)){dispose(n);nodes.delete(o.id);n=null;}
       if(!n||n.userData.kind!==o.kind){if(n){dispose(n);nodes.delete(o.id);}n=createNode(o);}
       n.visible=o.active;n.position.set(o.position.x,o.position.y,o.position.z);n.rotation.set(...['x','y','z'].map(a=>THREE.MathUtils.degToRad(o.rotation[a])));n.scale.set(o.scale.x,o.scale.y,o.scale.z);
       if(MESH_KINDS.includes(o.kind)){
@@ -190,6 +215,7 @@ export function createViewport(canvas, onSelect, onTransform, onTransformEnd) {
         const lit=n.userData.litMaterial,unlit=n.userData.unlitMaterial;lit.color.set(o.color);lit.roughness=o.material.roughness;lit.metalness=o.material.metalness;lit.emissive.set(o.material.emissive);lit.emissiveIntensity=o.material.emissiveIntensity;unlit.color.set(o.color);const wf=wireframe||shading==='wireframe'||o.material.wireframe;lit.wireframe=wf;unlit.wireframe=wf;n.material=shading==='unlit'?unlit:lit;n.castShadow=shadows&&o.render.castShadow;n.receiveShadow=shadows&&o.render.receiveShadow;
       }
       if(LIGHT_KINDS.includes(o.kind)){n.color.set(o.light.color);n.intensity=o.light.intensity;n.castShadow=shadows&&o.render.castShadow;if(o.kind==='pointLight'){n.distance=o.light.distance;n.decay=o.light.decay;}}
+      if(PARTICLE_KINDS.includes(o.kind)){n.userData.particleConfig=normalizeParticle(o.particle);n.material.color.set(o.particle.color);n.material.size=o.particle.size;}
       if(CAMERA_KINDS.includes(o.kind)){
         const pc=n.userData.previewCamera;if(pc){pc.fov=o.camera.fov;pc.near=o.camera.near;pc.far=o.camera.far;pc.updateProjectionMatrix();n.userData.cameraHelper?.update();}
       }
@@ -215,6 +241,6 @@ export function createViewport(canvas, onSelect, onTransform, onTransformEnd) {
       const forward=new THREE.Vector3(0,0,-1).applyQuaternion(camera.quaternion);orbit.target.copy(camera.position).addScaledVector(forward,5);orbit.update();return true;
     },
     stats(){return {calls:renderer.info.render.calls,triangles:renderer.info.render.triangles,lines:renderer.info.render.lines};},
-    render(){const w=Math.max(1,canvas.clientWidth),h=Math.max(1,canvas.clientHeight);if(canvas.width!==Math.floor(w*renderer.getPixelRatio())||canvas.height!==Math.floor(h*renderer.getPixelRatio())){renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix();}orbit.update();renderer.render(world,camera);}
+    render(){const now=performance.now();for(const n of nodes.values())if(n.userData.particleConfig)updateParticleNode(n,now);const w=Math.max(1,canvas.clientWidth),h=Math.max(1,canvas.clientHeight);if(canvas.width!==Math.floor(w*renderer.getPixelRatio())||canvas.height!==Math.floor(h*renderer.getPixelRatio())){renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix();}orbit.update();renderer.render(world,camera);}
   };
 }
