@@ -32,5 +32,5 @@ try{
   camera.position.set(mainCameraObject.position.x,mainCameraObject.position.y,mainCameraObject.position.z);
   camera.rotation.set(...['x','y','z'].map(a=>THREE.MathUtils.degToRad(mainCameraObject.rotation[a])));camera.updateProjectionMatrix();
  }
- const w=innerWidth,h=innerHeight;if(canvas.width!==Math.floor(w*renderer.getPixelRatio())||canvas.height!==Math.floor(h*renderer.getPixelRatio())){renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix();}orbit.update();renderer.render(world,camera);requestAnimationFrame(frame);}requestAnimationFrame(frame);
+ const w=innerWidth,h=innerHeight;if(canvas.width!==Math.floor(w*renderer.getPixelRatio())||canvas.height!==Math.floor(h*renderer.getPixelRatio())){renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix();}if(!mainCameraObject)orbit.update();renderer.render(world,camera);requestAnimationFrame(frame);}requestAnimationFrame(frame);
 }catch(error){ravsSplash.style.display='none';document.getElementById('error').textContent='Game membutuhkan WebGL 2: '+error.message;}
