@@ -10,10 +10,15 @@ test('parametric geometry normalizes safe ranges',()=>{
 
 test('model modifiers clamp values and preserve axes',()=>{
   const m=normalizeModifiers({twist:{enabled:true,angle:1440,axis:'x'},taper:{enabled:true,amount:-5,axis:'z'}});
-  assert.equal(m.twist.angle,1080);assert.equal(m.twist.axis,'x');assert.equal(m.taper.amount,-.95);assert.equal(m.taper.axis,'z');
+  assert.equal(m.twist.angle,1080);assert.equal(m.twist.axis,'x');assert.equal(m.taper.amount,-.95);assert.equal(m.taper.axis,'z');assert.equal(m.mirror.enabled,false);assert.equal(m.mirror.axis,'y');
 });
 
 test('modeling signature changes when geometry or modifier changes',()=>{
   const o={kind:'box',geometry:defaultGeometry('box'),modifiers:defaultModifiers()};
   const a=modelingSignature(o);o.geometry.width=2;const b=modelingSignature(o);assert.notEqual(a,b);o.modifiers.twist.enabled=true;assert.notEqual(b,modelingSignature(o));
+});
+
+test('mirror modifier persists axis and offset',()=>{
+  const m=normalizeModifiers({mirror:{enabled:true,axis:'z',offset:2}});
+  assert.equal(m.mirror.enabled,true);assert.equal(m.mirror.axis,'z');assert.equal(m.mirror.offset,2);
 });
