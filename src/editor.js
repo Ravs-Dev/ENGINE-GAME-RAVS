@@ -7,6 +7,7 @@ import { History } from './history.js';
 import { createViewport } from './viewport.js';
 import { FEATURE_PACKS, readPackState, writePackState, isPackReady } from './feature-packs.js';
 import { MODEL_KINDS, defaultGeometry, defaultModifiers, normalizeGeometry, normalizeModifiers } from './modeling.js';
+import { listPrefabs, savePrefab, instantiatePrefab, removePrefab, listMaterials, saveMaterial, applyMaterialPreset, removeMaterial } from './assets-library.js';
 const $ = id => document.getElementById(id);
 const keys = new Set(), storageKey = 'ravs.scene.3d.v2';
 const layoutStorageKey = 'ravs.layout.v1';
@@ -127,6 +128,18 @@ function appendModelingInspector(inspector,o){
   const pg=document.createElement('div');pg.className='modeling-grid';modelingField(pg,'Amount',o.modifiers.taper,'amount',-.95,4,.05);appendSelect(pg,'Axis',o.modifiers.taper,'axis',['x','y','z']);taper.append(pg);section.append(taper);
   inspector.append(section);
 }
+function renderAssetLibrary(){
+  const prefabs=$('prefabList'),materials=$('materialPresetList');if(!prefabs||!materials)return;
+  prefabs.replaceChildren();materials.replaceChildren();
+  for(const prefab of listPrefabs()){
+    const card=document.createElement('div');card.className='asset-card';const meta=document.createElement('div');const name=document.createElement('strong');name.textContent=prefab.name;const small=document.createElement('small');small.textContent='Prefab · '+new Date(prefab.createdAt).toLocaleDateString();meta.append(name,small);
+    const actions=document.createElement('div');actions.className='asset-card-actions';const use=document.createElement('button');use.textContent='Instantiate';use.onclick=()=>{if(backup)return;const o=instantiatePrefab(prefab);scene.objects.push(o);selected=o.id;record();refresh();status('Prefab '+prefab.name+' di-instantiate.');};const del=document.createElement('button');del.textContent='×';del.onclick=()=>{removePrefab(prefab.id);renderAssetLibrary();};actions.append(use,del);card.append(meta,actions);prefabs.append(card);
+  }
+  for(const preset of listMaterials()){
+    const card=document.createElement('div');card.className='asset-card';const meta=document.createElement('div');const name=document.createElement('strong');name.textContent=preset.name;const small=document.createElement('small');small.textContent='Material Preset';meta.append(name,small);
+    const actions=document.createElement('div');actions.className='asset-card-actions';const use=document.createElement('button');use.textContent='Apply';use.onclick=()=>{const o=scene.objects.find(x=>x.id===selected);if(!o||LIGHT_KINDS.includes(o.kind)||CAMERA_KINDS.includes(o.kind)){status('Pilih mesh/model untuk Apply Material.');return;}applyMaterialPreset(o,preset);record();refresh();status('Material '+preset.name+' diterapkan.');};const del=document.createElement('button');del.textContent='×';del.onclick=()=>{removeMaterial(preset.id);renderAssetLibrary();};actions.append(use,del);card.append(meta,actions);materials.append(card);
+  }
+}
 function selectedModel(){return scene.objects.find(o=>o.id===selected&&MODEL_KINDS.includes(o.kind));}
 function estimatedHalfHeight(o){
   if(!o)return 0;
@@ -235,6 +248,10 @@ function refresh() {
     }
     const addScript=document.createElement('button'); addScript.textContent='+ Add Script'; addScript.disabled=!!backup;
     addScript.onclick=()=>{o.scripts.push({id:crypto.randomUUID(),language:'lua',path:'Scripts/Main.lua',enabled:true});record();refresh();}; inspector.append(addScript);
+    if(!LIGHT_KINDS.includes(o.kind)&&!CAMERA_KINDS.includes(o.kind)){
+      const saveMat=document.createElement('button');saveMat.textContent='Save Material Preset';saveMat.disabled=!!backup;saveMat.onclick=()=>{const name=prompt('Nama material preset',o.name+' Material');if(!name)return;saveMaterial(name,o);renderAssetLibrary();status('Material preset tersimpan.');};inspector.append(saveMat);
+    }
+    const savePf=document.createElement('button');savePf.textContent='Save as Prefab';savePf.disabled=!!backup;savePf.onclick=()=>{const name=prompt('Nama prefab',o.name);if(!name)return;savePrefab(name,o);renderAssetLibrary();status('Prefab '+name+' tersimpan.');};inspector.append(savePf);
     for (const [name, action] of [
       ['Fokus', () => viewport?.focus(o.id)],
       ['Duplikat', () => { const n = structuredClone(o); n.id = crypto.randomUUID(); n.name += ' Copy'; n.position.x += 1.5; scene.objects.push(n); selected = n.id; }],
@@ -371,8 +388,9 @@ for (const [id,mode] of [['toolMove','translate'],['toolRotate','rotate'],['tool
 }
 $('toolHand').onclick=()=>{ if(backup)return; for(const b of ['toolMove','toolRotate','toolScale','toolHand']) $(b).classList.toggle('active',b==='toolHand'); status('Hand/View tool aktif.'); };
 $('mode').onchange = e => { viewport?.setMode(e.target.value); const id={translate:'toolMove',rotate:'toolRotate',scale:'toolScale'}[e.target.value]; for(const b of ['toolMove','toolRotate','toolScale','toolHand']) $(b).classList.toggle('active',b===id); };
-$('projectTab').onclick=()=>{ $('contentWorkspace').classList.remove('drawer-collapsed'); $('projectView').hidden=false; $('consoleView').hidden=true; $('projectTab').classList.add('active'); $('consoleTab').classList.remove('active'); };
-$('consoleTab').onclick=()=>{ $('contentWorkspace').classList.remove('drawer-collapsed'); $('projectView').hidden=true; $('consoleView').hidden=false; $('consoleTab').classList.add('active'); $('projectTab').classList.remove('active'); };
+$('projectTab').onclick=()=>{ $('contentWorkspace').classList.remove('drawer-collapsed'); $('projectView').hidden=false; $('assetLibraryView').hidden=true; $('consoleView').hidden=true; $('projectTab').classList.add('active'); $('assetLibraryTab').classList.remove('active'); $('consoleTab').classList.remove('active'); };
+$('assetLibraryTab').onclick=()=>{ $('contentWorkspace').classList.remove('drawer-collapsed'); $('projectView').hidden=true; $('assetLibraryView').hidden=false; $('consoleView').hidden=true; $('projectTab').classList.remove('active'); $('assetLibraryTab').classList.add('active'); $('consoleTab').classList.remove('active'); renderAssetLibrary(); };
+$('consoleTab').onclick=()=>{ $('contentWorkspace').classList.remove('drawer-collapsed'); $('projectView').hidden=true; $('assetLibraryView').hidden=true; $('consoleView').hidden=false; $('consoleTab').classList.add('active'); $('projectTab').classList.remove('active'); $('assetLibraryTab').classList.remove('active'); };
 $('contentDrawer').onclick=()=>{ const collapsed=$('contentWorkspace').classList.toggle('drawer-collapsed'); $('bottomSplitter').classList.toggle('drawer-collapsed',collapsed); status(collapsed?'Content Drawer ditutup.':'Content Drawer dibuka.'); };
 $('outputLog').onclick=()=>{ $('contentWorkspace').classList.remove('drawer-collapsed'); $('consoleTab').click(); status('Output Log dibuka.'); };
 $('clearConsole').onclick=()=>{ consoleEntries.length=0; $('consoleOutput').replaceChildren(); $('consoleCount').textContent='0'; };
@@ -613,6 +631,7 @@ $('featurePackImport').onchange=async e=>{
   }catch(error){status('Import pack gagal: '+error.message);} finally {e.target.value='';}
 };
 renderPackManager();
+renderAssetLibrary();
 syncDesktopPacks();
 
 const toolchainNames = { lua:'Lua', c:'C', cpp:'C++', csharp:'C#', java:'Java' };
