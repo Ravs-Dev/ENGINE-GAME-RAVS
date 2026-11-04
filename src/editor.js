@@ -126,6 +126,8 @@ function appendModelingInspector(inspector,o){
   const tg=document.createElement('div');tg.className='modeling-grid';modelingField(tg,'Angle °',o.modifiers.twist,'angle',-1080,1080,5);appendSelect(tg,'Axis',o.modifiers.twist,'axis',['x','y','z']);twist.append(tg);section.append(twist);
   const taper=document.createElement('div');taper.className='modifier-card';const ph=document.createElement('div');ph.className='modifier-head';const ps=document.createElement('strong');ps.textContent='Taper Modifier';const pe=document.createElement('input');pe.type='checkbox';pe.checked=o.modifiers.taper.enabled;pe.disabled=!!backup;pe.onchange=()=>{o.modifiers.taper.enabled=pe.checked;record();refresh();};ph.append(ps,pe);taper.append(ph);
   const pg=document.createElement('div');pg.className='modeling-grid';modelingField(pg,'Amount',o.modifiers.taper,'amount',-.95,4,.05);appendSelect(pg,'Axis',o.modifiers.taper,'axis',['x','y','z']);taper.append(pg);section.append(taper);
+  const mirror=document.createElement('div');mirror.className='modifier-card';const mh=document.createElement('div');mh.className='modifier-head';const ms=document.createElement('strong');ms.textContent='Mirror Modifier';const me=document.createElement('input');me.type='checkbox';me.checked=o.modifiers.mirror.enabled;me.disabled=!!backup;me.onchange=()=>{o.modifiers.mirror.enabled=me.checked;record();refresh();};mh.append(ms,me);mirror.append(mh);
+  const mg=document.createElement('div');mg.className='modeling-grid';appendSelect(mg,'Axis',o.modifiers.mirror,'axis',['x','y','z']);modelingField(mg,'Offset',o.modifiers.mirror,'offset',-1000,1000,.1);mirror.append(mg);section.append(mirror);
   inspector.append(section);
 }
 function renderAssetLibrary(){
