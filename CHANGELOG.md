@@ -8,6 +8,10 @@
 - Add Reset Layout from the bottom dock and Window menu.
 - Add keyboard-accessible splitters with arrow-key resizing and Home-to-reset.
 - Keep viewport rendering responsive while panels are resized.
+- Add an internal splitter between Content Browser and the code/output area.
+- Add a resizable/collapsible Toolchain Manager strip.
+- Add Maximize Viewport mode for distraction-free scene editing.
+- Add Level Editing, Scripting, and Cinematic layout presets.
 
 
 ## 0.7.0
