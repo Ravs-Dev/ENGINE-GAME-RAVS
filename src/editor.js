@@ -220,10 +220,12 @@ function refresh() {
       field(inspector, 'Cast Shadow', o.render, 'castShadow', 'checkbox');
       field(inspector, 'Receive Shadow', o.render, 'receiveShadow', 'checkbox');
     }
-    field(inspector, 'Rigidbody', o.body, 'enabled', 'checkbox');
-    field(inspector, 'Bounce', o.body, 'bounce', 'number', 0, 1);
-    field(inspector, 'Controller', o.motion, 'enabled', 'checkbox');
-    field(inspector, 'Kecepatan', o.motion, 'speed', 'number', 0, 100);
+    if(MODEL_KINDS.includes(o.kind)){
+      field(inspector, 'Rigidbody', o.body, 'enabled', 'checkbox');
+      field(inspector, 'Bounce', o.body, 'bounce', 'number', 0, 1);
+      field(inspector, 'Controller', o.motion, 'enabled', 'checkbox');
+      field(inspector, 'Kecepatan', o.motion, 'speed', 'number', 0, 100);
+    }
     if (MODEL_KINDS.includes(o.kind)) {
       const rt=document.createElement('h2'); rt.textContent='Rig / Armature'; inspector.append(rt);
       if (!o.rig) {
