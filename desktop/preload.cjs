@@ -7,6 +7,9 @@ contextBridge.exposeInMainWorld('ravsDesktop', {
   writeFile: (path, content, revision) => ipcRenderer.invoke('project:write', path, content, revision),
   scanToolchains: () => ipcRenderer.invoke('toolchains:scan'),
   openExternal: url => ipcRenderer.invoke('external:open', url),
+  listPacks: () => ipcRenderer.invoke('packs:list'),
+  installPack: () => ipcRenderer.invoke('packs:install'),
+  removePack: id => ipcRenderer.invoke('packs:remove', id),
   onCommand(callback) {
     ipcRenderer.on('editor:command', (_event, command) => {
       if (['undo', 'redo', 'save'].includes(command)) callback(command);
