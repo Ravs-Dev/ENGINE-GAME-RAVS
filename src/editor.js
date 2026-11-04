@@ -7,6 +7,13 @@ import { History } from './history.js';
 import { createViewport } from './viewport.js';
 const $ = id => document.getElementById(id);
 const keys = new Set(), storageKey = 'ravs.scene.3d.v2';
+const layoutStorageKey = 'ravs.layout.v1';
+const defaultLayout = { left:285, right:330, bottom:320, outlinerCollapsed:false, detailsCollapsed:false };
+let editorLayout = {...defaultLayout};
+try {
+  const savedLayout = JSON.parse(localStorage.getItem(layoutStorageKey) || 'null');
+  if (savedLayout && typeof savedLayout === 'object') editorLayout = {...defaultLayout,...savedLayout};
+} catch { editorLayout = {...defaultLayout}; }
 let scene = demoScene(), selected = scene.objects[1].id, backup = null, last = 0, paused = false, stepOnce = false, activeView = 'scene', simulating = false, fpsTime = performance.now(), fpsFrames = 0;
 const consoleEntries = [];
 function pushConsole(text, level='log') {
@@ -277,9 +284,76 @@ $('toolHand').onclick=()=>{ if(backup)return; for(const b of ['toolMove','toolRo
 $('mode').onchange = e => { viewport?.setMode(e.target.value); const id={translate:'toolMove',rotate:'toolRotate',scale:'toolScale'}[e.target.value]; for(const b of ['toolMove','toolRotate','toolScale','toolHand']) $(b).classList.toggle('active',b===id); };
 $('projectTab').onclick=()=>{ $('contentWorkspace').classList.remove('drawer-collapsed'); $('projectView').hidden=false; $('consoleView').hidden=true; $('projectTab').classList.add('active'); $('consoleTab').classList.remove('active'); };
 $('consoleTab').onclick=()=>{ $('contentWorkspace').classList.remove('drawer-collapsed'); $('projectView').hidden=true; $('consoleView').hidden=false; $('consoleTab').classList.add('active'); $('projectTab').classList.remove('active'); };
-$('contentDrawer').onclick=()=>{ $('contentWorkspace').classList.toggle('drawer-collapsed'); status($('contentWorkspace').classList.contains('drawer-collapsed')?'Content Drawer ditutup.':'Content Drawer dibuka.'); };
+$('contentDrawer').onclick=()=>{ const collapsed=$('contentWorkspace').classList.toggle('drawer-collapsed'); $('bottomSplitter').classList.toggle('drawer-collapsed',collapsed); status(collapsed?'Content Drawer ditutup.':'Content Drawer dibuka.'); };
 $('outputLog').onclick=()=>{ $('contentWorkspace').classList.remove('drawer-collapsed'); $('consoleTab').click(); status('Output Log dibuka.'); };
 $('clearConsole').onclick=()=>{ consoleEntries.length=0; $('consoleOutput').replaceChildren(); $('consoleCount').textContent='0'; };
+
+function clampLayoutValue(value,min,max){ return Math.max(min,Math.min(max,Number(value)||min)); }
+function saveEditorLayout(){ try { localStorage.setItem(layoutStorageKey,JSON.stringify(editorLayout)); } catch { /* layout persistence is optional */ } }
+function applyEditorLayout(){
+  editorLayout.left=clampLayoutValue(editorLayout.left,160,480);
+  editorLayout.right=clampLayoutValue(editorLayout.right,220,520);
+  editorLayout.bottom=clampLayoutValue(editorLayout.bottom,180,620);
+  const root=$('levelEditorLayout');
+  root.style.setProperty('--ravs-outliner-width',editorLayout.left+'px');
+  root.style.setProperty('--ravs-details-width',editorLayout.right+'px');
+  document.documentElement.style.setProperty('--ravs-content-height',editorLayout.bottom+'px');
+  root.classList.toggle('outliner-collapsed',!!editorLayout.outlinerCollapsed);
+  root.classList.toggle('details-collapsed',!!editorLayout.detailsCollapsed);
+  $('leftSplitter').classList.toggle('collapsed-edge',!!editorLayout.outlinerCollapsed);
+  $('rightSplitter').classList.toggle('collapsed-edge',!!editorLayout.detailsCollapsed);
+  $('leftSplitter').setAttribute('aria-valuenow',String(editorLayout.left));
+  $('rightSplitter').setAttribute('aria-valuenow',String(editorLayout.right));
+  $('bottomSplitter').setAttribute('aria-valuenow',String(editorLayout.bottom));
+}
+function resetEditorLayout(){
+  editorLayout={...defaultLayout}; applyEditorLayout(); saveEditorLayout();
+  $('contentWorkspace').classList.remove('drawer-collapsed'); $('bottomSplitter').classList.remove('drawer-collapsed');
+  status('Layout editor dikembalikan ke default.');
+}
+function setPanelCollapsed(side,collapsed){
+  if(side==='left') editorLayout.outlinerCollapsed=collapsed;
+  else editorLayout.detailsCollapsed=collapsed;
+  applyEditorLayout(); saveEditorLayout();
+  status((side==='left'?'World Outliner':'Details')+(collapsed?' ditutup.':' dibuka.'));
+}
+function setupSplitter(id,axis,onDelta,onKeyboard){
+  const splitter=$(id); let start=null;
+  splitter.addEventListener('pointerdown',event=>{
+    if(event.button!==0)return;
+    start={x:event.clientX,y:event.clientY}; splitter.setPointerCapture?.(event.pointerId);
+    splitter.classList.add('dragging'); document.body.classList.add('layout-resizing',axis==='x'?'vertical-resize':'horizontal-resize');
+  });
+  splitter.addEventListener('pointermove',event=>{
+    if(!start)return;
+    const dx=event.clientX-start.x,dy=event.clientY-start.y; onDelta(axis==='x'?dx:dy); start={x:event.clientX,y:event.clientY}; applyEditorLayout();
+  });
+  const finish=()=>{ if(!start)return; start=null; splitter.classList.remove('dragging'); document.body.classList.remove('layout-resizing','vertical-resize','horizontal-resize'); saveEditorLayout(); };
+  splitter.addEventListener('pointerup',finish); splitter.addEventListener('pointercancel',finish);
+  splitter.addEventListener('keydown',event=>{
+    if(!['ArrowLeft','ArrowRight','ArrowUp','ArrowDown','Home'].includes(event.key))return;
+    event.preventDefault();
+    if(event.key==='Home'){ resetEditorLayout(); return; }
+    onKeyboard(event.key,event.shiftKey?40:10); applyEditorLayout(); saveEditorLayout();
+  });
+  splitter.addEventListener('dblclick',()=>resetEditorLayout());
+}
+setupSplitter('leftSplitter','x',dx=>{editorLayout.outlinerCollapsed=false;editorLayout.left=clampLayoutValue(editorLayout.left+dx,160,480);},(key,step)=>{
+  editorLayout.outlinerCollapsed=false;if(key==='ArrowLeft')editorLayout.left-=step;if(key==='ArrowRight')editorLayout.left+=step;
+});
+setupSplitter('rightSplitter','x',dx=>{editorLayout.detailsCollapsed=false;editorLayout.right=clampLayoutValue(editorLayout.right-dx,220,520);},(key,step)=>{
+  editorLayout.detailsCollapsed=false;if(key==='ArrowLeft')editorLayout.right+=step;if(key==='ArrowRight')editorLayout.right-=step;
+});
+setupSplitter('bottomSplitter','y',dy=>{editorLayout.bottom=clampLayoutValue(editorLayout.bottom-dy,180,620);},(key,step)=>{
+  if(key==='ArrowUp')editorLayout.bottom+=step;if(key==='ArrowDown')editorLayout.bottom-=step;
+});
+$('collapseOutliner').onclick=()=>setPanelCollapsed('left',true);
+$('collapseDetails').onclick=()=>setPanelCollapsed('right',true);
+$('leftSplitter').addEventListener('click',()=>{if(editorLayout.outlinerCollapsed)setPanelCollapsed('left',false);});
+$('rightSplitter').addEventListener('click',()=>{if(editorLayout.detailsCollapsed)setPanelCollapsed('right',false);});
+$('resetLayout').onclick=resetEditorLayout;
+applyEditorLayout();
+
 const menuPopup = $('engineMenuPopup');
 function selectedObject() { return scene.objects.find(o=>o.id===selected); }
 function addObject(kind) {
@@ -318,10 +392,13 @@ const menuDefinitions = {
   ],
   window:[
     ['Content Browser',()=>$('projectTab').click()],['Output Log',()=>$('consoleTab').click()],
+    ['Toggle World Outliner',()=>setPanelCollapsed('left',!editorLayout.outlinerCollapsed)],
+    ['Toggle Details',()=>setPanelCollapsed('right',!editorLayout.detailsCollapsed)],
+    ['Reset Layout',resetEditorLayout],
     ['Toolchain Manager',()=>{ $('scanToolchains').scrollIntoView({behavior:'smooth',block:'center'}); status('Toolchain Manager ditampilkan.'); }]
   ],
   help:[
-    ['About RAVS Engine',()=>status('RAVS Engine 3D v0.7.0 · editor game 3D desktop.')],
+    ['About RAVS Engine',()=>status('RAVS Engine 3D v0.8.0 · resizable desktop workspace.')],
     ['Controls',()=>status('Q View · W Move · E Rotate · R Scale · F Focus · Ctrl+S Save · Ctrl+D Duplicate')]
   ]
 };
