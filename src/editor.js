@@ -8,7 +8,7 @@ import { createViewport } from './viewport.js';
 const $ = id => document.getElementById(id);
 const keys = new Set(), storageKey = 'ravs.scene.3d.v2';
 const layoutStorageKey = 'ravs.layout.v1';
-const defaultLayout = { left:285, right:330, bottom:320, outlinerCollapsed:false, detailsCollapsed:false };
+const defaultLayout = { left:285, right:330, bottom:320, contentLeft:320, toolchainHeight:112, outlinerCollapsed:false, detailsCollapsed:false, toolchainCollapsed:false, viewportMaximized:false, preset:'custom' };
 let editorLayout = {...defaultLayout};
 try {
   const savedLayout = JSON.parse(localStorage.getItem(layoutStorageKey) || 'null');
@@ -294,21 +294,34 @@ function applyEditorLayout(){
   editorLayout.left=clampLayoutValue(editorLayout.left,160,480);
   editorLayout.right=clampLayoutValue(editorLayout.right,220,520);
   editorLayout.bottom=clampLayoutValue(editorLayout.bottom,180,620);
+  editorLayout.contentLeft=clampLayoutValue(editorLayout.contentLeft,220,620);
+  editorLayout.toolchainHeight=clampLayoutValue(editorLayout.toolchainHeight,72,280);
   const root=$('levelEditorLayout');
   root.style.setProperty('--ravs-outliner-width',editorLayout.left+'px');
   root.style.setProperty('--ravs-details-width',editorLayout.right+'px');
   document.documentElement.style.setProperty('--ravs-content-height',editorLayout.bottom+'px');
+  document.documentElement.style.setProperty('--ravs-content-left',editorLayout.contentLeft+'px');
+  document.documentElement.style.setProperty('--ravs-toolchain-height',editorLayout.toolchainHeight+'px');
   root.classList.toggle('outliner-collapsed',!!editorLayout.outlinerCollapsed);
   root.classList.toggle('details-collapsed',!!editorLayout.detailsCollapsed);
+  root.classList.toggle('viewport-maximized',!!editorLayout.viewportMaximized);
+  document.body.classList.toggle('viewport-maximized',!!editorLayout.viewportMaximized);
+  $('toolchainPanel').classList.toggle('collapsed-panel',!!editorLayout.toolchainCollapsed);
+  $('toolchainSplitter').classList.toggle('collapsed-edge',!!editorLayout.toolchainCollapsed);
+  $('maximizeViewport').classList.toggle('active',!!editorLayout.viewportMaximized);
+  $('layoutPreset').value = editorLayout.preset || 'custom';
   $('leftSplitter').classList.toggle('collapsed-edge',!!editorLayout.outlinerCollapsed);
   $('rightSplitter').classList.toggle('collapsed-edge',!!editorLayout.detailsCollapsed);
   $('leftSplitter').setAttribute('aria-valuenow',String(editorLayout.left));
   $('rightSplitter').setAttribute('aria-valuenow',String(editorLayout.right));
   $('bottomSplitter').setAttribute('aria-valuenow',String(editorLayout.bottom));
+  $('contentSplitter').setAttribute('aria-valuenow',String(editorLayout.contentLeft));
+  $('toolchainSplitter').setAttribute('aria-valuenow',String(editorLayout.toolchainHeight));
 }
 function resetEditorLayout(){
   editorLayout={...defaultLayout}; applyEditorLayout(); saveEditorLayout();
   $('contentWorkspace').classList.remove('drawer-collapsed'); $('bottomSplitter').classList.remove('drawer-collapsed');
+  $('toolchainPanel').classList.remove('collapsed-panel'); $('toolchainSplitter').classList.remove('collapsed-edge');
   status('Layout editor dikembalikan ke default.');
 }
 function setPanelCollapsed(side,collapsed){
@@ -347,11 +360,29 @@ setupSplitter('rightSplitter','x',dx=>{editorLayout.detailsCollapsed=false;edito
 setupSplitter('bottomSplitter','y',dy=>{editorLayout.bottom=clampLayoutValue(editorLayout.bottom-dy,180,620);},(key,step)=>{
   if(key==='ArrowUp')editorLayout.bottom+=step;if(key==='ArrowDown')editorLayout.bottom-=step;
 });
+setupSplitter('contentSplitter','x',dx=>{editorLayout.contentLeft=clampLayoutValue(editorLayout.contentLeft+dx,220,620);editorLayout.preset='custom';},(key,step)=>{
+  if(key==='ArrowLeft')editorLayout.contentLeft-=step;if(key==='ArrowRight')editorLayout.contentLeft+=step;editorLayout.preset='custom';
+});
+setupSplitter('toolchainSplitter','y',dy=>{editorLayout.toolchainCollapsed=false;editorLayout.toolchainHeight=clampLayoutValue(editorLayout.toolchainHeight-dy,72,280);editorLayout.preset='custom';},(key,step)=>{
+  editorLayout.toolchainCollapsed=false;if(key==='ArrowUp')editorLayout.toolchainHeight+=step;if(key==='ArrowDown')editorLayout.toolchainHeight-=step;editorLayout.preset='custom';
+});
 $('collapseOutliner').onclick=()=>setPanelCollapsed('left',true);
 $('collapseDetails').onclick=()=>setPanelCollapsed('right',true);
+$('collapseToolchain').onclick=()=>{editorLayout.toolchainCollapsed=true;editorLayout.preset='custom';applyEditorLayout();saveEditorLayout();status('Toolchain Manager ditutup.');};
 $('leftSplitter').addEventListener('click',()=>{if(editorLayout.outlinerCollapsed)setPanelCollapsed('left',false);});
 $('rightSplitter').addEventListener('click',()=>{if(editorLayout.detailsCollapsed)setPanelCollapsed('right',false);});
+$('toolchainSplitter').addEventListener('click',()=>{if(editorLayout.toolchainCollapsed){editorLayout.toolchainCollapsed=false;applyEditorLayout();saveEditorLayout();status('Toolchain Manager dibuka.');}});
 $('resetLayout').onclick=resetEditorLayout;
+$('maximizeViewport').onclick=()=>{editorLayout.viewportMaximized=!editorLayout.viewportMaximized;editorLayout.preset='custom';applyEditorLayout();saveEditorLayout();status(editorLayout.viewportMaximized?'Viewport dimaksimalkan.':'Viewport dikembalikan ke layout editor.');};
+const layoutPresets={
+  level:{left:285,right:330,bottom:320,contentLeft:320,toolchainHeight:112,outlinerCollapsed:false,detailsCollapsed:false,toolchainCollapsed:false,viewportMaximized:false},
+  scripting:{left:220,right:280,bottom:500,contentLeft:260,toolchainHeight:82,outlinerCollapsed:false,detailsCollapsed:false,toolchainCollapsed:true,viewportMaximized:false},
+  cinematic:{left:180,right:260,bottom:220,contentLeft:280,toolchainHeight:82,outlinerCollapsed:true,detailsCollapsed:false,toolchainCollapsed:true,viewportMaximized:false}
+};
+$('layoutPreset').onchange=e=>{
+  const preset=e.target.value;if(preset==='custom')return;
+  editorLayout={...editorLayout,...layoutPresets[preset],preset};applyEditorLayout();saveEditorLayout();status('Layout '+e.target.options[e.target.selectedIndex].text+' diterapkan.');
+};
 applyEditorLayout();
 
 const menuPopup = $('engineMenuPopup');
@@ -394,7 +425,7 @@ const menuDefinitions = {
     ['Content Browser',()=>$('projectTab').click()],['Output Log',()=>$('consoleTab').click()],
     ['Toggle World Outliner',()=>setPanelCollapsed('left',!editorLayout.outlinerCollapsed)],
     ['Toggle Details',()=>setPanelCollapsed('right',!editorLayout.detailsCollapsed)],
-    ['Reset Layout',resetEditorLayout],
+    ['Maximize Viewport',()=>$('maximizeViewport').click()],['Reset Layout',resetEditorLayout],
     ['Toolchain Manager',()=>{ $('scanToolchains').scrollIntoView({behavior:'smooth',block:'center'}); status('Toolchain Manager ditampilkan.'); }]
   ],
   help:[
