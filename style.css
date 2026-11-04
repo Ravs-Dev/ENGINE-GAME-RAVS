@@ -107,3 +107,9 @@ body.viewport-maximized #levelEditorLayout{height:calc(100vh - 110px);min-height
 .modifier-card .modifier-head strong{font-size:11px;letter-spacing:.4px;margin:0}
 .workspace-build-focus #packManagerPanel{outline:2px solid #0b7895;outline-offset:-2px}
 @media(max-width:850px){.workspace-tabs{display:none}.modeling-toolbar{display:none!important}}
+
+.asset-library-toolbar{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px;padding:7px 9px;background:#11191f;border:1px solid #32424d;border-radius:4px}.asset-library-toolbar strong{font-size:12px}.asset-library-toolbar span{font-size:10px;color:#7f94a5}
+.asset-library-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;height:100%}.asset-library-grid section{min-width:0;padding:8px;background:#11181e;border:1px solid #303d46;border-radius:4px;overflow:auto}.asset-library-grid h3{margin:0 0 8px;font-size:11px;color:#b8ddea}
+.asset-card{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px;align-items:center;margin:5px 0;padding:7px;background:#182129;border:1px solid #34434e;border-radius:4px}.asset-card strong{font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.asset-card small{display:block;color:#718696;font-size:9px}.asset-card-actions{display:flex;gap:4px}.asset-card-actions button{padding:4px 6px;font-size:10px}
+#assetLibraryView{height:calc(100% - 36px);overflow:auto}
+@media(max-width:850px){.asset-library-grid{grid-template-columns:1fr}}
