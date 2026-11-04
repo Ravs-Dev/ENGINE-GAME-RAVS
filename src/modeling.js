@@ -1,5 +1,6 @@
-const clampInt=(v,min,max)=>Math.max(min,Math.min(max,Math.round(Number(v)||min)));
-const clamp=(v,min,max)=>Math.max(min,Math.min(max,Number(v)||min));
+const numeric=(v,fallback)=>{const n=Number(v);return Number.isFinite(n)?n:fallback;};
+const clampInt=(v,min,max)=>Math.max(min,Math.min(max,Math.round(numeric(v,min))));
+const clamp=(v,min,max)=>Math.max(min,Math.min(max,numeric(v,min)));
 
 export const MODEL_KINDS=['box','sphere','cylinder','plane','cone','torus'];
 
