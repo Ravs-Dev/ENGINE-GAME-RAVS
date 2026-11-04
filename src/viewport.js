@@ -1,7 +1,8 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { TransformControls } from 'three/addons/controls/TransformControls.js';
-import { MESH_KINDS, LIGHT_KINDS, CAMERA_KINDS } from './scene.js';
+import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
+import { MESH_KINDS, LIGHT_KINDS, CAMERA_KINDS, MODEL_ASSET_KINDS } from './scene.js';
 import { modelingSignature, normalizeGeometry, normalizeModifiers } from './modeling.js';
 
 function applyModifiers(geometry, rawModifiers){
@@ -39,6 +40,20 @@ function geometryFor(object){
     kind==='torus'?new THREE.TorusGeometry(g.radius,g.tube,g.radialSegments,g.tubularSegments):
     new THREE.BoxGeometry(g.width,g.height,g.depth,g.widthSegments,g.heightSegments,g.depthSegments);
   return applyModifiers(geometry,object.modifiers);
+}
+
+
+function prepareImportedModel(group,object){
+  group.userData.assetSignature=object.asset?.data??'';
+  group.traverse(child=>{
+    if(!child.isMesh)return;
+    child.userData.id=object.id;
+    child.geometry?.computeVertexNormals?.();
+    const lit=new THREE.MeshStandardMaterial({side:THREE.DoubleSide});
+    const unlit=new THREE.MeshBasicMaterial({side:THREE.DoubleSide});
+    child.userData.litMaterial=lit;child.userData.unlitMaterial=unlit;child.material=lit;
+  });
+  return group;
 }
 
 function updateRigHelper(node, rig) {
@@ -105,6 +120,8 @@ export function createViewport(canvas, onSelect, onTransform, onTransformEnd) {
       const lit=new THREE.MeshStandardMaterial({side:THREE.DoubleSide});
       const unlit=new THREE.MeshBasicMaterial({side:THREE.DoubleSide});
       node=new THREE.Mesh(geometryFor(o),lit); node.userData.litMaterial=lit; node.userData.unlitMaterial=unlit; node.userData.modelingSignature=modelingSignature(o);
+    } else if(MODEL_ASSET_KINDS.includes(o.kind)){
+      try{node=prepareImportedModel(new OBJLoader().parse(o.asset?.data??''),o);}catch{node=new THREE.Group();node.userData.assetSignature=o.asset?.data??'';}
     } else if(o.kind==='pointLight'){
       node=new THREE.PointLight(o.light.color,o.light.intensity,o.light.distance,o.light.decay); node.add(new THREE.PointLightHelper(node,.3));
     } else if(o.kind==='directionalLight'){
@@ -118,6 +135,7 @@ export function createViewport(canvas, onSelect, onTransform, onTransformEnd) {
     node.userData.id=o.id;node.userData.kind=o.kind;nodes.set(o.id,node);group.add(node);return node;
   }
   function dispose(node){
+    node.traverse?.(child=>{if(child!==node){child.geometry?.dispose?.();child.userData?.litMaterial?.dispose?.();child.userData?.unlitMaterial?.dispose?.();if(child.material&&!child.userData?.litMaterial)child.material.dispose?.();}});
     if(node.geometry)node.geometry.dispose();
     node.userData.rigHelper?.traverse?.(child=>{child.geometry?.dispose?.();child.material?.dispose?.();});
     node.userData.litMaterial?.dispose(); node.userData.unlitMaterial?.dispose();
@@ -131,7 +149,9 @@ export function createViewport(canvas, onSelect, onTransform, onTransformEnd) {
     sun.color.set(env.sunColor);sun.intensity=env.sunIntensity;world.fog=env.fogEnabled?new THREE.Fog(env.fogColor,env.fogNear,env.fogFar):null;
     for(const [id,n] of nodes)if(!scene.objects.some(o=>o.id===id)){if(gizmo.object===n)gizmo.detach();dispose(n);nodes.delete(id);}
     for(const o of scene.objects){
-      let n=nodes.get(o.id);if(!n||n.userData.kind!==o.kind){if(n){dispose(n);nodes.delete(o.id);}n=createNode(o);}
+      let n=nodes.get(o.id);
+      if(n&&MODEL_ASSET_KINDS.includes(o.kind)&&n.userData.assetSignature!==(o.asset?.data??'')){dispose(n);nodes.delete(o.id);n=null;}
+      if(!n||n.userData.kind!==o.kind){if(n){dispose(n);nodes.delete(o.id);}n=createNode(o);}
       n.visible=o.active;n.position.set(o.position.x,o.position.y,o.position.z);n.rotation.set(...['x','y','z'].map(a=>THREE.MathUtils.degToRad(o.rotation[a])));n.scale.set(o.scale.x,o.scale.y,o.scale.z);
       if(MESH_KINDS.includes(o.kind)){
         const signature=modelingSignature(o);
@@ -143,6 +163,9 @@ export function createViewport(canvas, onSelect, onTransform, onTransformEnd) {
         unlit.color.set(o.color);
         const wf=wireframe||shading==='wireframe'||o.material.wireframe;lit.wireframe=wf;unlit.wireframe=wf;n.material=shading==='unlit'?unlit:lit;
         n.castShadow=shadows&&o.render.castShadow;n.receiveShadow=shadows&&o.render.receiveShadow;updateRigHelper(n,o.rig);
+      }
+      if(MODEL_ASSET_KINDS.includes(o.kind)){
+        n.traverse(child=>{if(!child.isMesh)return;const lit=child.userData.litMaterial,unlit=child.userData.unlitMaterial;if(!lit||!unlit)return;lit.color.set(o.color);lit.roughness=o.material.roughness;lit.metalness=o.material.metalness;lit.emissive.set(o.material.emissive);lit.emissiveIntensity=o.material.emissiveIntensity;unlit.color.set(o.color);const wf=wireframe||shading==='wireframe'||o.material.wireframe;lit.wireframe=wf;unlit.wireframe=wf;child.material=shading==='unlit'?unlit:lit;child.castShadow=shadows&&o.render.castShadow;child.receiveShadow=shadows&&o.render.receiveShadow;});
       }
       if(LIGHT_KINDS.includes(o.kind)){n.color.set(o.light.color);n.intensity=o.light.intensity;n.castShadow=shadows&&o.render.castShadow;if(o.kind==='pointLight'){n.distance=o.light.distance;n.decay=o.light.decay;}}
       if(CAMERA_KINDS.includes(o.kind)){
