@@ -18,7 +18,8 @@ export function defaultGeometry(kind){
 export function defaultModifiers(){
   return {
     twist:{enabled:false,angle:0,axis:'y'},
-    taper:{enabled:false,amount:0,axis:'y'}
+    taper:{enabled:false,amount:0,axis:'y'},
+    mirror:{enabled:false,axis:'x',offset:0}
   };
 }
 
@@ -39,11 +40,12 @@ export function normalizeGeometry(kind,value={}){
 }
 
 export function normalizeModifiers(value={}){
-  const d=defaultModifiers(),tw={...d.twist,...(value.twist??{})},ta={...d.taper,...(value.taper??{})};
+  const d=defaultModifiers(),tw={...d.twist,...(value.twist??{})},ta={...d.taper,...(value.taper??{})},mi={...d.mirror,...(value.mirror??{})};
   const axis=v=>['x','y','z'].includes(v)?v:'y';
   return {
     twist:{enabled:!!tw.enabled,angle:clamp(tw.angle,-1080,1080),axis:axis(tw.axis)},
-    taper:{enabled:!!ta.enabled,amount:clamp(ta.amount,-.95,4),axis:axis(ta.axis)}
+    taper:{enabled:!!ta.enabled,amount:clamp(ta.amount,-.95,4),axis:axis(ta.axis)},
+    mirror:{enabled:!!mi.enabled,axis:axis(mi.axis),offset:clamp(mi.offset,-1000,1000)}
   };
 }
 
