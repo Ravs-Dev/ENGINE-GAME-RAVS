@@ -1,0 +1,31 @@
+name: Native C++ engine
+on:
+  push:
+    branches: [main, "feature/**"]
+    paths:
+      - "native/**"
+      - ".github/workflows/native-engine.yml"
+  pull_request:
+    paths:
+      - "native/**"
+      - ".github/workflows/native-engine.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, ubuntu-22.04]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v5
+      - name: Configure native runtime
+        run: cmake -S native -B native/build -DRAVS_ENABLE_LUA=OFF -DRAVS_BUILD_TESTS=ON
+      - name: Build native runtime
+        run: cmake --build native/build --config Release --parallel 2
+      - name: Run native tests
+        run: ctest --test-dir native/build -C Release --output-on-failure

@@ -4,12 +4,12 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'none'">
-  <title>RAVS Engine 3D</title>
+  <title>RAVS ENGINE | World Editor</title>
   <link rel="stylesheet" href="./style.css">
 </head>
 <body>
   <nav class="engine-menubar" aria-label="Menu utama">
-    <strong class="mini-brand">RAVS</strong>
+    <strong class="mini-brand">RAVS ENGINE</strong>
     <button class="menu-item" data-menu="file">File</button>
     <button class="menu-item" data-menu="edit">Edit</button>
     <button class="menu-item" data-menu="assets">Assets</button>
@@ -27,7 +27,7 @@
   </nav>
   <div id="engineMenuPopup" class="engine-menu-popup" hidden></div>
   <header>
-    <strong class="brand"><img id="brandLogo" alt="Logo Ravs"><span>Ravs <small>ENGINE / 3D</small></span></strong>
+    <strong class="brand"><img id="brandLogo" alt="Logo Ravs"><span>RAVS ENGINE <small>WORLD EDITOR</small></span></strong>
     <span id="sceneName"></span>
     <div class="transform-toolbar" aria-label="Transform tools">
       <button id="toolHand" title="Hand / View (Q)">Q</button>
@@ -65,7 +65,7 @@
     </aside>
     <div id="leftSplitter" class="workspace-splitter vertical" role="separator" tabindex="0" aria-label="Resize World Outliner" aria-orientation="vertical" aria-valuemin="160" aria-valuemax="480" aria-valuenow="285"></div>
     <section class="viewport">
-      <div class="viewbar"><div class="editor-tabs"><button id="sceneTab" class="active">Scene</button><button id="gameTab">Game</button></div><span>Perspektif · WebGL 2</span></div>
+      <div class="viewbar"><div class="editor-tabs"><button id="sceneTab" class="active">Scene</button><button id="gameTab">Game</button></div><span>SCENE VIEWPORT · WEBGL 2</span></div>
       <div id="modelingToolbar" class="modeling-toolbar" hidden>
         <strong>Modeling</strong>
         <select id="modelPrimitive"><option value="box">Cube</option><option value="sphere">Sphere</option><option value="cylinder">Cylinder</option><option value="plane">Plane</option><option value="cone">Cone</option><option value="torus">Torus</option></select>

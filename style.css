@@ -113,3 +113,90 @@ body.viewport-maximized #levelEditorLayout{height:calc(100vh - 110px);min-height
 .asset-card{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px;align-items:center;margin:5px 0;padding:7px;background:#182129;border:1px solid #34434e;border-radius:4px}.asset-card strong{font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.asset-card small{display:block;color:#718696;font-size:9px}.asset-card-actions{display:flex;gap:4px}.asset-card-actions button{padding:4px 6px;font-size:10px}
 #assetLibraryView{height:calc(100% - 36px);overflow:auto}
 @media(max-width:850px){.asset-library-grid{grid-template-columns:1fr}}
+
+
+/* RAVS ENGINE workspace refresh: compact professional editor layout */
+:root{
+  color-scheme:dark;
+  --ravs-bg:#17191d;--ravs-panel:#202329;--ravs-panel-2:#252a31;
+  --ravs-border:#343b45;--ravs-muted:#929dab;--ravs-text:#e7ebf1;
+  --ravs-accent:#36b8d2;--ravs-accent-soft:#153b46;--ravs-hover:#303741;
+}
+html,body{min-width:760px;min-height:100%;background:var(--ravs-bg);color:var(--ravs-text)}
+body{font-size:13px}
+.engine-menubar{height:30px;background:#15171a;border-color:#30343a;position:relative;z-index:30}
+.engine-menubar .menu-item{font-size:12px;padding:5px 9px}
+.engine-menubar .menu-item:focus-visible,button:focus-visible,select:focus-visible,input:focus-visible{outline:1px solid var(--ravs-accent);outline-offset:1px}
+header{min-height:54px;background:#22262c;border-bottom:1px solid #3b414a;padding:7px 12px;gap:8px}
+.brand{margin-right:12px;color:#f5f7fa;font-size:16px;letter-spacing:.8px}
+.brand small{color:var(--ravs-accent);letter-spacing:1.5px}
+.brand img{width:34px;height:34px}
+button,.button,select{border:1px solid #414954;border-radius:4px;background:#2b3038;color:#e6ebf2;transition:background .12s,border-color .12s}
+button:hover,.button:hover{background:#39414b;border-color:#596574}
+button:disabled{opacity:.4}
+#save{background:#164e5c;border-color:#267d91}
+#play{background:#1e654e;border-color:#2a8b69}
+#play.playing{background:#8b4c25;border-color:#c7783e}
+.transform-toolbar button.active,.editor-tabs button.active,.bottom-tabs button.active{background:#174b59;border-color:#36b8d2;color:white}
+main#levelEditorLayout{grid-template-columns:250px 5px minmax(420px,1fr) 5px 310px;gap:0;background:#17191d}
+#outlinerPanel,#detailsPanel{background:var(--ravs-panel);border-color:var(--ravs-border);padding:10px;min-width:0}
+#outlinerPanel h2,#detailsPanel h2,.project-browser h2,.toolchain-panel h2{color:#b9c4d2;font-size:11px;letter-spacing:1.1px;margin:10px 0}
+.panel-title-row{min-height:28px;border-bottom:1px solid #343b44;margin-bottom:8px;padding-bottom:6px}
+.panel-title-row h2{margin:4px 0}
+#hierarchy{padding:3px 0}
+#hierarchy button{padding:5px 7px;margin:1px 0;border-radius:3px;color:#cbd3dd;font-size:12px}
+#hierarchy button.selected{background:#153d49;border-color:#287c91;color:#f3fbff}
+#hierarchy button:hover{background:#303741}
+#outlinerPanel .tools{gap:5px;margin:5px 0}
+#outlinerPanel .tools button,#terrainActor,#cylinder{flex:1;padding:6px 5px;font-size:11px}
+.search{margin:8px 0 10px}
+.search input{width:100%;margin-top:5px}
+#detailsPanel{border-left:1px solid var(--ravs-border)}
+#detailsPanel label{display:grid;grid-template-columns:minmax(90px,1fr) minmax(90px,132px);gap:8px;margin:7px 0;color:#b9c4d2}
+#detailsPanel input:not([type=checkbox]){width:100%;background:#15181d;border-color:#3b424c}
+#detailsPanel input[type=color]{width:100%;height:27px;padding:2px}
+#detailsPanel p{font-size:11px;color:#8995a4;line-height:1.5}
+.viewport{background:#17191d;padding:8px 10px;gap:0}
+.viewbar{background:#22262c;border:1px solid #343b45;border-bottom:0;padding:5px 7px;margin:0;min-height:31px}
+.viewbar span{font-size:11px;color:#a6b0bd}
+.unreal-viewport-toolbar,.modeling-toolbar{background:#252a31;border:1px solid #343b45;padding:5px;gap:5px;margin:0 0 5px}
+.unreal-viewport-toolbar button,.unreal-viewport-toolbar select,.modeling-toolbar button,.modeling-toolbar select{font-size:11px;padding:5px 7px}
+.canvas-shell{position:relative;flex:1;min-height:220px;background:#0b1015;border:1px solid #3b424c;overflow:hidden}
+.viewport canvas{display:block;width:100%;height:100%;min-height:220px;max-height:none;border:0;object-fit:fill;background:#101820}
+.viewport-stats{position:absolute;right:9px;top:8px;background:#111820d9;border:1px solid #ffffff1c;color:#b9c9d5;border-radius:3px;padding:4px 7px;font:10px ui-monospace,monospace;pointer-events:none}
+#status{font-size:11px;color:#a9c1cb;background:#20252b;border:1px solid #343b45;padding:5px 8px;margin:5px 0 0}
+.viewport .help{font-size:10px;color:#8793a2;margin:4px 0 0;line-height:1.35}
+.workspace-splitter{background:#111419;transition:background .12s}
+.workspace-splitter:hover,.workspace-splitter:focus{background:var(--ravs-accent);outline:0}
+#toolchainPanel,#packManagerPanel{background:#1b1f25;border-color:#343b45;padding:10px 14px}
+.toolchain-panel{grid-template-columns:minmax(240px,1fr) auto minmax(250px,1fr)}
+.toolchain-status{color:#b9c4d2}
+.pack-card{background:#242a31;border:1px solid #3b444e;border-radius:5px;padding:10px}
+.pack-card.ready{border-color:#286b59}
+.pack-card p,.pack-card small{color:#9da9b8}
+.project-workspace{background:#171a1f;border-color:#343b45}
+.project-browser{background:#20252b;border-color:#343b45;padding:12px}
+.code-editor{background:#191d22;padding:12px}
+.bottom-tabs{border-color:#3b424c}
+.bottom-tabs button{background:#242a31;padding:6px 12px}
+#code{background:#101419;border-color:#39424d;color:#dce5ed;font:12px/1.6 ui-monospace,SFMono-Regular,Consolas,monospace}
+#consoleOutput{background:#0f1318;border-color:#343b45}
+.engine-dockbar{background:#111419;border-top:1px solid #343b45;color:#9da9b8;padding:5px 9px}
+.engine-dockbar button{padding:4px 8px;font-size:11px}
+.engine-dockbar select{padding:4px 7px;font-size:11px}
+.engine-menu-popup{background:#252a31;border-color:#49525e}
+input,textarea,select{accent-color:var(--ravs-accent)}
+input[type=checkbox]{width:14px;height:14px}
+#inspector{padding-bottom:12px}
+#inspector input,#inspector select{max-width:100%}
+@media(max-width:1100px){
+  main#levelEditorLayout{grid-template-columns:210px 5px minmax(360px,1fr) 5px 270px}
+  #detailsPanel label{grid-template-columns:1fr 110px}
+}
+@media(max-width:850px){
+  html,body{min-width:0}
+  main#levelEditorLayout{grid-template-columns:170px minmax(0,1fr)}
+  #rightSplitter{display:none}
+  #detailsPanel{grid-column:1/-1;max-height:420px;overflow:auto}
+  .engine-dockbar{flex-wrap:wrap}
+}
