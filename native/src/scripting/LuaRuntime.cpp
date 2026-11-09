@@ -22,7 +22,7 @@ struct LuaRuntime::Impl {
 namespace {
 int engine_log(lua_State* state) {
     const char* message = luaL_checkstring(state, 1);
-    std::cout << "[RAVS:Lua] " << message << '\\n';
+    std::cout << "[RAVS:Lua] " << message << '\n';
     return 0;
 }
 }
@@ -58,14 +58,14 @@ bool LuaRuntime::execute_file(const std::filesystem::path& path) {
     const auto filename = path.string();
     if (luaL_loadfile(impl_->state, filename.c_str()) != LUA_OK ||
         lua_pcall(impl_->state, 0, LUA_MULTRET, 0) != LUA_OK) {
-        std::cerr << "[RAVS:Lua] " << lua_tostring(impl_->state, -1) << '\\n';
+        std::cerr << "[RAVS:Lua] " << lua_tostring(impl_->state, -1) << '\n';
         lua_pop(impl_->state, 1);
         return false;
     }
     return true;
 #else
     (void)path;
-    std::cerr << "[RAVS:Lua] Lua 5.4 support is not installed.\\n";
+    std::cerr << "[RAVS:Lua] Lua 5.4 support is not installed.\n";
     return false;
 #endif
 }
@@ -75,7 +75,7 @@ bool LuaRuntime::execute_string(std::string_view source) {
     const std::string code(source);
     if (luaL_loadstring(impl_->state, code.c_str()) != LUA_OK ||
         lua_pcall(impl_->state, 0, LUA_MULTRET, 0) != LUA_OK) {
-        std::cerr << "[RAVS:Lua] " << lua_tostring(impl_->state, -1) << '\\n';
+        std::cerr << "[RAVS:Lua] " << lua_tostring(impl_->state, -1) << '\n';
         lua_pop(impl_->state, 1);
         return false;
     }
