@@ -18,6 +18,6 @@ void Engine::shutdown() {
     initialized_ = false;
 }
 void Engine::log(std::string_view message) const {
-    std::cout << "[RAVS] " << message << '\\n';
+    std::cout << "[RAVS] " << message << '\n';
 }
 }
