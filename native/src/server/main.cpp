@@ -7,7 +7,7 @@ int main(int argc, char** argv) {
     ravs::scripting::LuaRuntime lua;
     if (argc > 1) {
         if (!lua.available()) {
-            std::cerr << "Lua script requested, but Lua 5.4 is not enabled.\\n";
+            std::cerr << "Lua script requested, but Lua 5.4 is not enabled.\n";
             engine.shutdown();
             return 2;
         }
